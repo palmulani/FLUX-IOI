@@ -1,0 +1,18 @@
+## Visual Studio / .NET Core
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Database
+*.db-shm
+*.db-wal
+app.db
+
+## OS generated
+[Dd]esktop.ini
+Thumbs.db
+.DS_Store
