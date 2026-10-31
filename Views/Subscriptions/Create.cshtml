@@ -74,7 +74,13 @@
             </div>
             <div class="col-md-4">
                 <label class="form-label small fw-semibold text-muted">Promo / Discount Code</label>
-                <input type="text" name="discountCode" class="form-control" placeholder="e.g. ODOO2026" />
+                <div class="input-group">
+                    <input type="text" id="discountCodeInput" name="discountCode" class="form-control text-uppercase" placeholder="e.g. WELCOME10, ODOO50" />
+                    <button type="button" class="btn btn-outline-primary" onclick="verifyPromoCode()">
+                        <i class="bi bi-tag-fill me-1"></i> Apply
+                    </button>
+                </div>
+                <div id="promoFeedback" class="small mt-1 d-none"></div>
             </div>
         </div>
     </div>
@@ -191,6 +197,10 @@
                     <div>
                         <span class="text-muted small">Subtotal:</span>
                         <div class="fw-bold" id="liveSubtotal">$0.00</div>
+                    </div>
+                    <div id="discountSummaryBlock" class="d-none">
+                        <span class="text-success small">Discount:</span>
+                        <div class="fw-bold text-success" id="liveDiscount">-$0.00</div>
                     </div>
                     <div>
                         <span class="text-muted small">Tax (18%):</span>
@@ -312,6 +322,61 @@
             recalculateEstimate();
         }
 
+        let currentDiscountAmount = 0;
+        let currentAppliedPromo = null;
+
+        function verifyPromoCode() {
+            const input = document.getElementById('discountCodeInput');
+            const code = input.value.trim().toUpperCase();
+            const fb = document.getElementById('promoFeedback');
+
+            if (!code) {
+                currentDiscountAmount = 0;
+                currentAppliedPromo = null;
+                fb.className = 'small text-muted mt-1';
+                fb.innerText = 'Enter a valid coupon or promo code.';
+                fb.classList.remove('d-none');
+                recalculateEstimate();
+                return;
+            }
+
+            let totalQty = 0;
+            let subtotal = 0;
+            document.querySelectorAll('#linesContainer .line-row').forEach(row => {
+                const qtyInput = row.querySelector('input[name="quantities"]');
+                const priceInput = row.querySelector('.price-input');
+                const qty = parseInt(qtyInput?.value || "0");
+                const price = parseFloat(priceInput?.value || "0");
+                totalQty += isNaN(qty) ? 0 : qty;
+                subtotal += (isNaN(qty) ? 0 : qty) * (isNaN(price) ? 0 : price);
+            });
+
+            fb.className = 'small text-primary mt-1';
+            fb.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Verifying code...';
+            fb.classList.remove('d-none');
+
+            fetch(`/Discounts/ValidatePromo?code=${encodeURIComponent(code)}&amount=${subtotal}&qty=${totalQty}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.isValid) {
+                        currentDiscountAmount = data.discountAmount;
+                        currentAppliedPromo = data.code;
+                        fb.className = 'small text-success fw-semibold mt-1';
+                        fb.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i> ${data.message}`;
+                    } else {
+                        currentDiscountAmount = 0;
+                        currentAppliedPromo = null;
+                        fb.className = 'small text-danger fw-semibold mt-1';
+                        fb.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i> ${data.message}`;
+                    }
+                    recalculateEstimate();
+                })
+                .catch(() => {
+                    fb.className = 'small text-danger mt-1';
+                    fb.innerHTML = 'Error validating code.';
+                });
+        }
+
         function recalculateEstimate() {
             const planSelect = document.getElementById('planSelect');
             const selectedOpt = planSelect.options[planSelect.selectedIndex];
@@ -333,10 +398,20 @@
             });
 
             const tax = subtotal * 0.18;
-            const total = subtotal + tax;
+            const total = Math.max(0, subtotal + tax - currentDiscountAmount);
 
             document.getElementById('liveSubtotal').innerText = "$" + subtotal.toFixed(2);
             document.getElementById('liveTax').innerText = "$" + tax.toFixed(2);
+
+            const discBlock = document.getElementById('discountSummaryBlock');
+            const discText = document.getElementById('liveDiscount');
+            if (currentDiscountAmount > 0) {
+                discBlock.classList.remove('d-none');
+                discText.innerText = "-$" + currentDiscountAmount.toFixed(2);
+            } else {
+                discBlock.classList.add('d-none');
+            }
+
             document.getElementById('liveTotal').innerText = "$" + total.toFixed(2);
             document.getElementById('seatCountBadge').innerText = "Total Seats: " + totalQty;
 
