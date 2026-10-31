@@ -1,0 +1,302 @@
+@model Brightloop.Models.Subscription
+@{
+    ViewData["Title"] = $"Subscription {Model.SubscriptionNumber}";
+}
+
+<!-- Breadcrumbs & Status Bar -->
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+        <div class="small text-muted mb-1">
+            <a href="@Url.Action("Index", "Subscriptions")" class="text-decoration-none text-muted">Subscriptions</a> / @Model.SubscriptionNumber
+        </div>
+        <h4 class="fw-bold mb-0">@Model.SubscriptionNumber</h4>
+    </div>
+
+    <!-- State Transition Action Buttons -->
+    <div class="d-flex flex-wrap gap-2">
+        @if (Model.Status == "Draft")
+        {
+            <form asp-action="UpdateStatus" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+                <input type="hidden" name="newStatus" value="Quotation" />
+                <button type="submit" class="btn btn-outline-primary rounded-pill px-3">Mark as Quotation</button>
+            </form>
+            <form asp-action="UpdateStatus" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+                <input type="hidden" name="newStatus" value="Confirmed" />
+                <button type="submit" class="btn btn-primary-bright rounded-pill px-3">Confirm Order</button>
+            </form>
+        }
+        else if (Model.Status == "Quotation")
+        {
+            <form asp-action="UpdateStatus" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+                <input type="hidden" name="newStatus" value="Confirmed" />
+                <button type="submit" class="btn btn-primary-bright rounded-pill px-3">Confirm Order</button>
+            </form>
+        }
+        else if (Model.Status == "Confirmed")
+        {
+            <form asp-action="UpdateStatus" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+                <input type="hidden" name="newStatus" value="Active" />
+                <button type="submit" class="btn btn-success rounded-pill px-3">Activate Subscription</button>
+            </form>
+        }
+        else if (Model.Status == "Active")
+        {
+            <!-- Generate Invoice Now Button -->
+            <form asp-action="GenerateInvoiceNow" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+                <button type="submit" class="btn btn-primary-bright rounded-pill px-3">
+                    <i class="bi bi-receipt me-1"></i> Generate Invoice Now
+                </button>
+            </form>
+
+            @if (Model.Plan?.AllowPause == true)
+            {
+                <form asp-action="UpdateStatus" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <input type="hidden" name="newStatus" value="Paused" />
+                    <button type="submit" class="btn btn-outline-warning rounded-pill px-3">Pause</button>
+                </form>
+            }
+
+            @if (Model.Plan?.AllowEarlyClose == true)
+            {
+                <form asp-action="UpdateStatus" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <input type="hidden" name="newStatus" value="Closed" />
+                    <button type="submit" class="btn btn-outline-danger rounded-pill px-3" onclick="return confirm('Close this subscription early?');">Close Early</button>
+                </form>
+            }
+        }
+        else if (Model.Status == "Paused")
+        {
+            <form asp-action="UpdateStatus" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+                <input type="hidden" name="newStatus" value="Active" />
+                <button type="submit" class="btn btn-success rounded-pill px-3">Resume Active</button>
+            </form>
+        }
+    </div>
+</div>
+
+<!-- Lifecycle Chevron Pipeline -->
+<div class="card-bright p-3 mb-4">
+    <div class="d-flex justify-content-between align-items-center text-center">
+        @{
+            string[] stages = { "Draft", "Quotation", "Confirmed", "Active", "Closed" };
+            int currentIdx = Array.IndexOf(stages, Model.Status);
+            if (Model.Status == "Paused") currentIdx = 3;
+        }
+        @for (int i = 0; i < stages.Length; i++)
+        {
+            var isCurrent = (Model.Status == stages[i]);
+            var isPast = (i <= currentIdx);
+            <div class="flex-grow-1 @(isCurrent ? "fw-bold text-primary" : (isPast ? "text-dark" : "text-muted"))">
+                <div class="mb-1">
+                    @if (isCurrent)
+                    {
+                        <i class="bi bi-record-circle-fill text-primary fs-5"></i>
+                    }
+                    else if (isPast)
+                    {
+                        <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                    }
+                    else
+                    {
+                        <i class="bi bi-circle text-muted fs-5"></i>
+                    }
+                </div>
+                <div class="small">@stages[i]</div>
+            </div>
+            @if (i < stages.Length - 1)
+            {
+                <div class="text-muted"><i class="bi bi-arrow-right"></i></div>
+            }
+        }
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Subscription Information -->
+    <div class="col-lg-8">
+        <div class="card-bright p-4 h-100">
+            <h6 class="fw-bold mb-3">Subscription Contract Details</h6>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="small text-muted">Customer Name</div>
+                    <div class="fw-bold">@Model.Customer?.FullName</div>
+                    <div class="small text-muted">@Model.Customer?.CompanyName (@Model.Customer?.Email)</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="small text-muted">Plan</div>
+                    <div class="fw-bold text-primary">@Model.Plan?.Name</div>
+                    <div class="small text-muted">Bills @Model.Plan?.BillingFrequency</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="small text-muted">Start Date</div>
+                    <div class="fw-semibold">@Model.StartDate.ToString("MMM dd, yyyy")</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="small text-muted">Expiry Date</div>
+                    <div class="fw-semibold">@(Model.ExpiryDate.HasValue ? Model.ExpiryDate.Value.ToString("MMM dd, yyyy") : "Ongoing")</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="small text-muted">Next Billing Date</div>
+                    <div class="fw-semibold text-warning-emphasis">@Model.NextBillingDate.ToString("MMM dd, yyyy")</div>
+                </div>
+            </div>
+
+            <hr class="my-4">
+
+            <!-- Plan Policy Matrix -->
+            <h6 class="fw-bold mb-3 small text-uppercase text-muted">Plan Governance Policies</h6>
+            <div class="d-flex flex-wrap gap-2">
+                <span class="badge @(Model.Plan?.AutoCloseOnEnd == true ? "bg-info-subtle text-info" : "bg-light text-muted border") px-3 py-2 rounded-pill">
+                    <i class="bi @(Model.Plan?.AutoCloseOnEnd == true ? "bi-check-circle" : "bi-dash")"></i> Auto-Close on End
+                </span>
+                <span class="badge @(Model.Plan?.AllowEarlyClose == true ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger") px-3 py-2 rounded-pill">
+                    <i class="bi @(Model.Plan?.AllowEarlyClose == true ? "bi-check-circle" : "bi-x-circle")"></i> Allow Early Close
+                </span>
+                <span class="badge @(Model.Plan?.AllowPause == true ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger") px-3 py-2 rounded-pill">
+                    <i class="bi @(Model.Plan?.AllowPause == true ? "bi-check-circle" : "bi-x-circle")"></i> Allow Pause
+                </span>
+                <span class="badge @(Model.Plan?.AllowRenew == true ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger") px-3 py-2 rounded-pill">
+                    <i class="bi @(Model.Plan?.AllowRenew == true ? "bi-check-circle" : "bi-x-circle")"></i> Allow Renew
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pricing Summary Card -->
+    <div class="col-lg-4">
+        <div class="card-bright p-4 h-100 bg-light">
+            <h6 class="fw-bold mb-3">Billing Summary</h6>
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted">Subtotal:</span>
+                <span class="fw-semibold">$@Model.SubTotal.ToString("F2")</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted">Taxes:</span>
+                <span class="fw-semibold">$@Model.TaxAmount.ToString("F2")</span>
+            </div>
+            @if (Model.DiscountAmount > 0)
+            {
+                <div class="d-flex justify-content-between mb-2 text-success">
+                    <span>Discount (@Model.AppliedDiscountCode):</span>
+                    <span class="fw-semibold">-$@Model.DiscountAmount.ToString("F2")</span>
+                </div>
+            }
+            <hr>
+            <div class="d-flex justify-content-between mb-3">
+                <span class="fw-bold">Total Per Cycle:</span>
+                <span class="fw-bold fs-4 text-primary">$@Model.TotalAmount.ToString("F2")</span>
+            </div>
+            <div class="small text-muted">Payment Terms: <strong>@Model.PaymentTerms</strong></div>
+        </div>
+    </div>
+</div>
+
+<!-- Product Line Items -->
+<div class="card-bright p-4 mb-4">
+    <h6 class="fw-bold mb-3">Subscribed Product &amp; Add-on Lines</h6>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr class="text-muted small text-uppercase">
+                    <th>Product</th>
+                    <th>Variant</th>
+                    <th>Qty</th>
+                    <th>Unit Price</th>
+                    <th>Tax</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var line in Model.Lines)
+                {
+                    <tr>
+                        <td class="fw-bold">@line.Product?.Name</td>
+                        <td>
+                            @if (line.Variant != null)
+                            {
+                                <span class="badge bg-secondary-subtle text-secondary px-2 py-1">@line.Variant.VariantName</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                        </td>
+                        <td>@line.Quantity</td>
+                        <td>$@line.UnitPrice.ToString("F2")</td>
+                        <td>$@line.TaxAmount.ToString("F2") (@line.TaxPercent%)</td>
+                        <td class="fw-bold">$@line.LineTotal.ToString("F2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Invoices Generated for this Subscription -->
+<div class="card-bright p-4">
+    <h6 class="fw-bold mb-3">Invoices History for this Subscription</h6>
+    @if (Model.Invoices.Count == 0)
+    {
+        <div class="p-3 text-center text-muted small bg-light rounded-3">
+            No invoices generated yet. Click "Generate Invoice Now" or run automated Billing Day.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr class="text-muted small text-uppercase">
+                        <th>Invoice #</th>
+                        <th>Date</th>
+                        <th>Due Date</th>
+                        <th>Total</th>
+                        <th>Paid</th>
+                        <th>Status</th>
+                        <th class="text-end">View</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var inv in Model.Invoices)
+                    {
+                        <tr>
+                            <td>
+                                <a href="@Url.Action("Details", "Invoices", new { id = inv.Id })" class="fw-bold" style="color: #4f46e5;">
+                                    @inv.InvoiceNumber
+                                </a>
+                            </td>
+                            <td>@inv.InvoiceDate.ToString("MMM dd, yyyy")</td>
+                            <td>@inv.DueDate.ToString("MMM dd, yyyy")</td>
+                            <td class="fw-bold">$@inv.TotalAmount.ToString("F2")</td>
+                            <td>$@inv.PaidAmount.ToString("F2")</td>
+                            <td>
+                                <span class="badge @(inv.Status == "Paid" ? "badge-paid" : "badge-confirmed") px-3 py-1 rounded-pill">@inv.Status</span>
+                            </td>
+                            <td class="text-end">
+                                <a href="@Url.Action("Details", "Invoices", new { id = inv.Id })" class="btn btn-sm btn-light border rounded-pill px-3">
+                                    Details
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

@@ -1,0 +1,213 @@
+@{
+    ViewData["Title"] = "Create Subscription / Offer";
+    var tmpl = ViewBag.SelectedTemplate as Brightloop.Models.QuotationTemplate;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">New Subscription or Quotation</h4>
+        <p class="text-muted small mb-0">Create from scratch or load directly from a pre-configured quotation template</p>
+    </div>
+    <a href="@Url.Action("Index", "Subscriptions")" class="btn btn-light border rounded-pill px-4">
+        &larr; Back to List
+    </a>
+</div>
+
+<!-- Quotation Template Selector Card -->
+<div class="card-bright p-3 mb-4 bg-light border-primary-subtle">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-magic fs-4 text-primary"></i>
+            <div>
+                <div class="fw-bold small text-uppercase">Fast-Track from Quotation Template</div>
+                <div class="text-muted small">Auto-fills pre-negotiated plans, variant lines, and discount tiers</div>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <select id="templatePicker" class="form-select form-select-sm" onchange="loadTemplate(this.value)">
+                <option value="">-- Choose Template to Load --</option>
+                @foreach (var t in (List<Brightloop.Models.QuotationTemplate>)ViewBag.Templates)
+                {
+                    <option value="@t.Id" selected="@(tmpl?.Id == t.Id)">@t.Name (@t.ValidityDays days validity)</option>
+                }
+            </select>
+        </div>
+    </div>
+</div>
+
+<form asp-action="Create" method="post" id="subForm">
+    @Html.AntiForgeryToken()
+
+    <div class="card-bright p-4 mb-4">
+        <h6 class="fw-bold mb-3">1. Contract Parties &amp; Terms</h6>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold text-muted">Customer</label>
+                <select name="customerId" class="form-select" required>
+                    <option value="">-- Select Customer --</option>
+                    @foreach (var c in (List<Brightloop.Models.User>)ViewBag.Customers)
+                    {
+                        <option value="@c.Id">@c.FullName (@(c.CompanyName ?? c.Email))</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold text-muted">Billing Plan</label>
+                <select name="planId" id="planSelect" class="form-select" required>
+                    <option value="">-- Select Plan --</option>
+                    @foreach (var p in (List<Brightloop.Models.Plan>)ViewBag.Plans)
+                    {
+                        <option value="@p.Id" selected="@(tmpl?.DefaultPlanId == p.Id)">@p.Name (Bills @p.BillingFrequency - Base $@p.BasePrice)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold text-muted">Payment Terms</label>
+                <select name="paymentTerms" class="form-select">
+                    <option value="Immediate">Immediate Payment</option>
+                    <option value="15 Days" selected>Net 15 Days</option>
+                    <option value="30 Days">Net 30 Days</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold text-muted">Promo / Discount Code</label>
+                <input type="text" name="discountCode" class="form-control" placeholder="e.g. ODOO2026" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Lines -->
+    <div class="card-bright p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0">2. Product Lines &amp; Variant Surcharges</h6>
+            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="addLineRow()">
+                <i class="bi bi-plus-lg me-1"></i> Add Line Item
+            </button>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table" id="linesTable">
+                <thead>
+                    <tr class="text-muted small text-uppercase">
+                        <th style="width: 35%;">Product</th>
+                        <th style="width: 30%;">Variant (e.g. Odoo brand +$560)</th>
+                        <th style="width: 15%;">Quantity</th>
+                        <th style="width: 15%;">Unit Price ($)</th>
+                        <th style="width: 5%;"></th>
+                    </tr>
+                </thead>
+                <tbody id="linesContainer">
+                    @if (tmpl != null && tmpl.Lines.Count > 0)
+                    {
+                        foreach (var l in tmpl.Lines)
+                        {
+                            <tr class="line-row">
+                                <td>
+                                    <select name="productIds" class="form-select product-selector" onchange="updateRowPrice(this)" required>
+                                        @foreach (var p in (List<Brightloop.Models.Product>)ViewBag.Products)
+                                        {
+                                            <option value="@p.Id" data-price="@p.SalesPrice" selected="@(p.Id == l.ProductId)">@p.Name ($@p.SalesPrice)</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td>
+                                    <select name="variantIds" class="form-select variant-selector" onchange="updateRowPrice(this)">
+                                        <option value="0" data-extra="0">Standard Edition (+$0)</option>
+                                        @if (l.Product?.Variants != null)
+                                        {
+                                            foreach (var v in l.Product.Variants)
+                                            {
+                                                <option value="@v.Id" data-extra="@v.PriceExtra" selected="@(v.Id == l.VariantId)">@v.VariantName (+$@v.PriceExtra)</option>
+                                            }
+                                        }
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="number" name="quantities" value="@l.Quantity" min="1" class="form-control" />
+                                </td>
+                                <td>
+                                    <input type="number" step="0.01" name="unitPrices" value="@(l.Product?.SalesPrice ?? 0)" class="form-control price-input" />
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-light text-danger" onclick="this.closest('tr').remove()"><i class="bi bi-trash"></i></button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr class="line-row">
+                            <td>
+                                <select name="productIds" class="form-select product-selector" onchange="updateRowPrice(this)" required>
+                                    @foreach (var p in (List<Brightloop.Models.Product>)ViewBag.Products)
+                                    {
+                                        <option value="@p.Id" data-price="@p.SalesPrice">@p.Name ($@p.SalesPrice)</option>
+                                    }
+                                </select>
+                            </td>
+                            <td>
+                                <select name="variantIds" class="form-select variant-selector" onchange="updateRowPrice(this)">
+                                    <option value="0" data-extra="0">Standard Edition (+$0)</option>
+                                    <option value="2" data-extra="560">Brand: Odoo Enterprise (+$560)</option>
+                                </select>
+                            </td>
+                            <td>
+                                <input type="number" name="quantities" value="1" min="1" class="form-control" />
+                            </td>
+                            <td>
+                                <input type="number" step="0.01" name="unitPrices" value="1200.00" class="form-control price-input" />
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-light text-danger" onclick="this.closest('tr').remove()"><i class="bi bi-trash"></i></button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="d-flex justify-content-end gap-3 mb-5">
+        <button type="submit" name="initialStatus" value="Draft" class="btn btn-light border rounded-pill px-4">
+            Save as Draft
+        </button>
+        <button type="submit" name="initialStatus" value="Quotation" class="btn btn-outline-primary rounded-pill px-4">
+            Save as Quotation
+        </button>
+        <button type="submit" name="initialStatus" value="Confirmed" class="btn btn-primary-bright rounded-pill px-4">
+            Confirm &amp; Proceed
+        </button>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        function loadTemplate(templateId) {
+            if (templateId) {
+                window.location.href = '@Url.Action("Create", "Subscriptions")?fromTemplateId=' + templateId;
+            }
+        }
+
+        function addLineRow() {
+            const container = document.getElementById('linesContainer');
+            const row = container.querySelector('.line-row');
+            if (row) {
+                const clone = row.cloneNode(true);
+                container.appendChild(clone);
+            }
+        }
+
+        function updateRowPrice(element) {
+            const row = element.closest('tr');
+            const prodSelect = row.querySelector('.product-selector');
+            const varSelect = row.querySelector('.variant-selector');
+            const priceInput = row.querySelector('.price-input');
+
+            const basePrice = parseFloat(prodSelect.options[prodSelect.selectedIndex]?.dataset.price || 0);
+            const extraPrice = parseFloat(varSelect.options[varSelect.selectedIndex]?.dataset.extra || 0);
+
+            priceInput.value = (basePrice + extraPrice).toFixed(2);
+        }
+    </script>
+}

@@ -1,0 +1,116 @@
+@model List<Brightloop.Models.Subscription>
+@{
+    ViewData["Title"] = "Subscriptions & Quotations";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Subscriptions &amp; Quotations</h4>
+        <p class="text-muted small mb-0">Manage customer contracts across their complete lifecycle</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="@Url.Action("Create", "Subscriptions")" class="btn btn-primary-bright">
+            <i class="bi bi-plus-circle me-1"></i> New Subscription / Quote
+        </a>
+    </div>
+</div>
+
+<!-- Filters Bar -->
+<div class="card-bright p-3 mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div class="d-flex flex-wrap gap-1">
+            <a href="@Url.Action("Index", "Subscriptions", new { status = "All" })" class="btn btn-sm rounded-pill @(ViewBag.CurrentStatus == "All" ? "btn-dark" : "btn-light border")">All</a>
+            <a href="@Url.Action("Index", "Subscriptions", new { status = "Draft" })" class="btn btn-sm rounded-pill @(ViewBag.CurrentStatus == "Draft" ? "btn-secondary text-white" : "btn-light border")">Draft</a>
+            <a href="@Url.Action("Index", "Subscriptions", new { status = "Quotation" })" class="btn btn-sm rounded-pill @(ViewBag.CurrentStatus == "Quotation" ? "btn-info text-white" : "btn-light border")">Quotation</a>
+            <a href="@Url.Action("Index", "Subscriptions", new { status = "Confirmed" })" class="btn btn-sm rounded-pill @(ViewBag.CurrentStatus == "Confirmed" ? "btn-warning text-dark" : "btn-light border")">Confirmed</a>
+            <a href="@Url.Action("Index", "Subscriptions", new { status = "Active" })" class="btn btn-sm rounded-pill @(ViewBag.CurrentStatus == "Active" ? "btn-success" : "btn-light border")">Active</a>
+            <a href="@Url.Action("Index", "Subscriptions", new { status = "Paused" })" class="btn btn-sm rounded-pill @(ViewBag.CurrentStatus == "Paused" ? "btn-primary" : "btn-light border")">Paused</a>
+            <a href="@Url.Action("Index", "Subscriptions", new { status = "Closed" })" class="btn btn-sm rounded-pill @(ViewBag.CurrentStatus == "Closed" ? "btn-danger" : "btn-light border")">Closed</a>
+        </div>
+        <form method="get" class="d-flex gap-2">
+            <input type="text" name="search" value="@ViewBag.Search" class="form-control form-control-sm rounded-pill px-3" placeholder="Search customer or #..." />
+            <button type="submit" class="btn btn-sm btn-light border rounded-pill px-3"><i class="bi bi-search"></i></button>
+        </form>
+    </div>
+</div>
+
+<!-- Subscriptions Table -->
+<div class="card-bright p-4">
+    @if (Model.Count == 0)
+    {
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+            No subscriptions found matching this filter.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr class="text-muted small text-uppercase">
+                        <th>Number</th>
+                        <th>Customer</th>
+                        <th>Plan &amp; Frequency</th>
+                        <th>Next Billing</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var sub in Model)
+                    {
+                        <tr>
+                            <td>
+                                <a href="@Url.Action("Details", "Subscriptions", new { id = sub.Id })" class="fw-bold text-decoration-none" style="color: #4f46e5;">
+                                    @sub.SubscriptionNumber
+                                </a>
+                                <div class="small text-muted">Terms: @sub.PaymentTerms</div>
+                            </td>
+                            <td>
+                                <div class="fw-semibold">@sub.Customer?.FullName</div>
+                                <div class="small text-muted">@sub.Customer?.CompanyName</div>
+                            </td>
+                            <td>
+                                <span class="fw-medium">@sub.Plan?.Name</span>
+                                <div class="small text-muted">@sub.Plan?.BillingFrequency</div>
+                            </td>
+                            <td>
+                                @if (sub.NextBillingDate <= DateTime.UtcNow && sub.Status == "Active")
+                                {
+                                    <span class="badge bg-warning-subtle text-warning-emphasis">Due Today</span>
+                                }
+                                else
+                                {
+                                    <span class="small text-muted">@sub.NextBillingDate.ToString("MMM dd, yyyy")</span>
+                                }
+                            </td>
+                            <td class="fw-bold">$@sub.TotalAmount.ToString("F2")</td>
+                            <td>
+                                @{
+                                    var badgeClass = sub.Status switch
+                                    {
+                                        "Draft" => "badge-draft",
+                                        "Quotation" => "badge-quotation",
+                                        "Confirmed" => "badge-confirmed",
+                                        "Active" => "badge-active",
+                                        "Paused" => "badge-paused",
+                                        "Closed" => "badge-closed",
+                                        _ => "badge-draft"
+                                    };
+                                }
+                                <span class="badge @badgeClass px-3 py-1 rounded-pill">@sub.Status</span>
+                            </td>
+                            <td class="text-end">
+                                <a href="@Url.Action("Details", "Subscriptions", new { id = sub.Id })" class="btn btn-sm btn-light border rounded-pill px-3">
+                                    Manage <i class="bi bi-chevron-right ms-1"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

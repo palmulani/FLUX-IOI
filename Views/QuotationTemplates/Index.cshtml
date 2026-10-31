@@ -1,0 +1,122 @@
+@model List<Brightloop.Models.QuotationTemplate>
+@{
+    ViewData["Title"] = "Quotation Templates";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Quotation Templates</h4>
+        <p class="text-muted small mb-0">Standardized sales quote blueprints with pre-negotiated products, variants, and terms</p>
+    </div>
+    <button class="btn btn-primary-bright" data-bs-toggle="modal" data-bs-target="#newTemplateModal">
+        <i class="bi bi-plus-circle me-1"></i> New Quotation Template
+    </button>
+</div>
+
+<div class="row g-4">
+    @foreach (var tmpl in Model)
+    {
+        <div class="col-lg-6">
+            <div class="card-bright p-4 h-100">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <h5 class="fw-bold mb-1">@tmpl.Name</h5>
+                        <div class="small text-muted">Default Plan: <strong class="text-primary">@tmpl.DefaultPlan?.Name</strong></div>
+                    </div>
+                    <span class="badge bg-info-subtle text-info px-3 py-1 rounded-pill">
+                        Valid for @tmpl.ValidityDays Days
+                    </span>
+                </div>
+
+                <div class="p-3 bg-light rounded-3 my-3">
+                    <div class="small fw-bold text-uppercase text-muted mb-2">Pre-Loaded Lines (@tmpl.Lines.Count)</div>
+                    @foreach (var l in tmpl.Lines)
+                    {
+                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom border-light">
+                            <span class="fw-medium small">
+                                @l.Product?.Name
+                                @if (l.Variant != null)
+                                {
+                                    <span class="badge bg-secondary-subtle text-secondary ms-1">@l.Variant.VariantName</span>
+                                }
+                            </span>
+                            <span class="small text-muted">Qty: @l.Quantity @(l.DiscountPercent > 0 ? $"({l.DiscountPercent}% off)" : "")</span>
+                        </div>
+                    }
+                </div>
+
+                <p class="text-muted small mb-3"><strong>Terms:</strong> @tmpl.TermsAndConditions</p>
+
+                <div class="d-flex justify-content-end">
+                    <a href="@Url.Action("Create", "Subscriptions", new { fromTemplateId = tmpl.Id })" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                        <i class="bi bi-file-earmark-plus me-1"></i> Use Template for Quote
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- New Template Modal -->
+<div class="modal fade" id="newTemplateModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Create Quotation Blueprint Template</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold text-muted">Template Name</label>
+                            <input type="text" name="name" class="form-control" placeholder="e.g. Enterprise ERP Transformation" required />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold text-muted">Default Plan</label>
+                            <select name="defaultPlanId" class="form-select" required>
+                                @foreach (var p in (List<Brightloop.Models.Plan>)ViewBag.Plans)
+                                {
+                                    <option value="@p.Id">@p.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold text-muted">Validity (Days)</label>
+                            <input type="number" name="validityDays" value="30" min="1" class="form-control" required />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-muted">Contract Terms &amp; Conditions</label>
+                        <textarea name="terms" class="form-control" rows="2" placeholder="Standard payment terms and renewal rules"></textarea>
+                    </div>
+
+                    <h6 class="small fw-bold text-uppercase text-muted mb-2">Default Product Lines</h6>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <select name="productIds" class="form-select">
+                                <option value="">-- Choose Product --</option>
+                                @foreach (var p in (List<Brightloop.Models.Product>)ViewBag.Products)
+                                {
+                                    <option value="@p.Id">@p.Name ($@p.SalesPrice)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-3">
+                            <input type="number" name="quantities" value="1" min="1" class="form-control" placeholder="Qty" />
+                        </div>
+                        <div class="col-3">
+                            <input type="number" step="0.01" name="discounts" value="0" min="0" max="100" class="form-control" placeholder="Disc %" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary-bright rounded-pill px-4">Save Template</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
