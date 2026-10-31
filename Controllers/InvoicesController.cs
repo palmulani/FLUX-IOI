@@ -38,6 +38,7 @@ namespace Brightloop.Controllers
             return View(invoices);
         }
 
+        [Authorize(Roles = "Admin,Staff,Customer")]
         public async Task<IActionResult> Details(int id)
         {
             var invoice = await _context.Invoices
@@ -51,10 +52,20 @@ namespace Brightloop.Controllers
 
             if (invoice == null) return NotFound();
 
+            if (User.IsInRole("Customer"))
+            {
+                var idClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (int.TryParse(idClaim, out var userId) && invoice.CustomerId != userId)
+                {
+                    return Forbid();
+                }
+            }
+
             return View(invoice);
         }
 
         [HttpGet]
+        [Authorize(Roles = "Admin,Staff,Customer")]
         public async Task<IActionResult> Print(int id)
         {
             var invoice = await _context.Invoices
@@ -65,6 +76,16 @@ namespace Brightloop.Controllers
                 .FirstOrDefaultAsync(i => i.Id == id);
 
             if (invoice == null) return NotFound();
+
+            // Customer tenant isolation security guard
+            if (User.IsInRole("Customer"))
+            {
+                var idClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (int.TryParse(idClaim, out var userId) && invoice.CustomerId != userId)
+                {
+                    return Forbid();
+                }
+            }
 
             return View(invoice);
         }
