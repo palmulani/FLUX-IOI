@@ -68,6 +68,25 @@ namespace Brightloop.Data
                 .HasForeignKey(q => q.QuotationTemplateId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // High-performance database indexing for sub-second queries & high concurrency
+            modelBuilder.Entity<Subscription>()
+                .HasIndex(s => new { s.CustomerId, s.Status });
+
+            modelBuilder.Entity<Subscription>()
+                .HasIndex(s => s.NextBillingDate);
+
+            modelBuilder.Entity<Invoice>()
+                .HasIndex(i => new { i.CustomerId, i.Status });
+
+            modelBuilder.Entity<Invoice>()
+                .HasIndex(i => i.DueDate);
+
+            modelBuilder.Entity<Payment>()
+                .HasIndex(p => new { p.CustomerId, p.PaymentDate });
+
+            modelBuilder.Entity<DiscountRule>()
+                .HasIndex(d => d.Code);
+
             // Ensure Decimal Precision
             foreach (var property in modelBuilder.Model.GetEntityTypes()
                 .SelectMany(t => t.GetProperties())
