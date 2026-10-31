@@ -1,0 +1,179 @@
+@model List<Brightloop.Models.AiLog>
+@{
+    ViewData["Title"] = "AI Subscription Copilot";
+    var customers = ViewBag.Customers as List<Brightloop.Models.User> ?? new List<Brightloop.Models.User>();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="bi bi-robot text-primary me-2"></i> Brightloop AI Copilot</h4>
+        <p class="text-muted small mb-0">Powered by OpenRouter LLM &bull; Predictive churn analysis, revenue optimization &amp; intelligent queries</p>
+    </div>
+    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill">
+        <i class="bi bi-lightning-charge-fill text-warning me-1"></i> OpenRouter Live API Active
+    </span>
+</div>
+
+<!-- Fast Prompt Shortcuts -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card-bright p-3 h-100 cursor-pointer" onclick="setPrompt('Analyze our current Monthly Recurring Revenue and give 3 strategic expansion recommendations.')">
+            <i class="bi bi-graph-up-arrow text-primary fs-4 mb-2 d-block"></i>
+            <div class="fw-bold small">MRR Growth Strategy</div>
+            <div class="text-muted" style="font-size: 11px;">Analyzes ARR, plan mix, and margins</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card-bright p-3 h-100 cursor-pointer" onclick="setPrompt('Which invoices are overdue and what collection strategies should the finance team deploy?')">
+            <i class="bi bi-bell-fill text-danger fs-4 mb-2 d-block"></i>
+            <div class="fw-bold small">Overdue Debt Chase</div>
+            <div class="text-muted" style="font-size: 11px;">Automated collections playbook</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card-bright p-3 h-100 cursor-pointer" onclick="setPrompt('How can we optimize our discount rules to convert more quotes into active subscriptions?')">
+            <i class="bi bi-percent text-success fs-4 mb-2 d-block"></i>
+            <div class="fw-bold small">Discount Optimization</div>
+            <div class="text-muted" style="font-size: 11px;">Examines ODOO2026 &amp; volume tiers</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card-bright p-3 h-100 cursor-pointer" onclick="setPrompt('Summarize customer retention health and recommend upsell bundles for small retail shops.')">
+            <i class="bi bi-stars text-warning fs-4 mb-2 d-block"></i>
+            <div class="fw-bold small">Retail Upsell Engine</div>
+            <div class="text-muted" style="font-size: 11px;">Cross-sell SLA and add-on storage</div>
+        </div>
+    </div>
+</div>
+
+<!-- Interactive Chat Window -->
+<div class="card-bright p-4 mb-4">
+    <div id="chatMessages" class="p-3 mb-3 bg-light rounded-4" style="min-height: 250px; max-height: 450px; overflow-y: auto;">
+        <div class="d-flex align-items-start gap-3 mb-3">
+            <div style="width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #6366f1, #06b6d4); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                <i class="bi bi-robot"></i>
+            </div>
+            <div class="p-3 bg-white rounded-4 shadow-xs border" style="max-width: 80%;">
+                <div class="fw-bold small text-primary mb-1">Brightloop Copilot</div>
+                <div class="small">
+                    Hello! I'm your subscription and revenue assistant. Ask me anything about current contracts, billing schedules, tax calculations, or customer churn risks.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Input Box -->
+    <div class="input-group">
+        <input type="text" id="userInput" class="form-control rounded-start-pill px-4" placeholder="Ask AI Copilot a question about subscriptions or revenue..." onkeydown="if(event.key==='Enter') sendQuery()" />
+        <button class="btn btn-primary-bright rounded-end-pill px-4" onclick="sendQuery()">
+            <i class="bi bi-send-fill me-1"></i> Ask AI
+        </button>
+    </div>
+</div>
+
+<!-- Customer Predictive Churn Risk Explorer -->
+<div class="card-bright p-4">
+    <h6 class="fw-bold mb-3"><i class="bi bi-shield-exclamation text-warning me-2"></i> Customer Predictive Churn Risk Explorer</h6>
+    <div class="row g-3 align-items-center mb-3">
+        <div class="col-md-6">
+            <select id="churnCustomerSelect" class="form-select">
+                @foreach (var c in customers)
+                {
+                    <option value="@c.Id">@c.FullName (@(c.CompanyName ?? c.Email))</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-3">
+            <button class="btn btn-outline-primary rounded-pill px-4 w-100" onclick="analyzeCustomerChurn()">
+                <i class="bi bi-cpu me-1"></i> Analyze Risk
+            </button>
+        </div>
+    </div>
+    <div id="churnResultBox" class="p-3 bg-light rounded-3 border d-none small">
+        <div class="fw-bold text-dark mb-1" id="churnTitle"></div>
+        <div id="churnDetails" class="text-muted"></div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function setPrompt(p) {
+            document.getElementById('userInput').value = p;
+            sendQuery();
+        }
+
+        function sendQuery() {
+            const input = document.getElementById('userInput');
+            const prompt = input.value.trim();
+            if (!prompt) return;
+
+            const chat = document.getElementById('chatMessages');
+
+            // Append User Message
+            chat.innerHTML += `
+                <div class="d-flex justify-content-end mb-3">
+                    <div class="p-3 bg-primary text-white rounded-4 shadow-xs" style="max-width: 80%;">
+                        <div class="small">${prompt}</div>
+                    </div>
+                </div>`;
+
+            // Append Thinking placeholder
+            const placeholderId = 'ai-placeholder-' + Date.now();
+            chat.innerHTML += `
+                <div id="${placeholderId}" class="d-flex align-items-start gap-3 mb-3">
+                    <div style="width: 36px; height: 36px; border-radius: 10px; background: #6366f1; color: #fff; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-robot"></i>
+                    </div>
+                    <div class="p-3 bg-white rounded-4 shadow-xs border" style="max-width: 80%;">
+                        <span class="spinner-border spinner-border-sm text-primary me-2"></span> Consulting Brightloop AI...
+                    </div>
+                </div>`;
+
+            chat.scrollTop = chat.scrollHeight;
+            input.value = '';
+
+            fetch('@Url.Action("Query", "AiCopilot")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: prompt })
+            })
+            .then(r => r.json())
+            .then(data => {
+                const el = document.getElementById(placeholderId);
+                if (el) {
+                    el.innerHTML = `
+                        <div style="width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #6366f1, #06b6d4); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                            <i class="bi bi-robot"></i>
+                        </div>
+                        <div class="p-3 bg-white rounded-4 shadow-xs border" style="max-width: 80%;">
+                            <div class="fw-bold small text-primary mb-1">Brightloop Copilot</div>
+                            <div class="small">${data.reply.replace(/\n/g, '<br>')}</div>
+                        </div>`;
+                    chat.scrollTop = chat.scrollHeight;
+                }
+            })
+            .catch(err => {
+                const el = document.getElementById(placeholderId);
+                if (el) el.remove();
+            });
+        }
+
+        function analyzeCustomerChurn() {
+            const customerId = document.getElementById('churnCustomerSelect').value;
+            const box = document.getElementById('churnResultBox');
+            const title = document.getElementById('churnTitle');
+            const details = document.getElementById('churnDetails');
+
+            box.classList.remove('d-none');
+            title.innerHTML = '<span class="spinner-border spinner-border-sm text-warning me-2"></span> Calculating risk vectors...';
+            details.innerText = '';
+
+            fetch('@Url.Action("ChurnAnalysis", "AiCopilot")?customerId=' + customerId)
+                .then(r => r.json())
+                .then(data => {
+                    title.innerText = "Churn Risk Vector: " + data.customer;
+                    details.innerText = data.analysis;
+                });
+        }
+    </script>
+}
