@@ -44,6 +44,18 @@ namespace Brightloop.Controllers
                 return RedirectToAction("Index", "Invoices");
             }
 
+            if (invoice.Status == "Cancelled")
+            {
+                TempData["Error"] = "Cannot record payments on cancelled invoices.";
+                return RedirectToAction("Details", "Invoices", new { id = invoiceId });
+            }
+
+            if (invoice.Status == "Draft")
+            {
+                TempData["Error"] = "Invoice is in Draft state. Please confirm the invoice before recording payment.";
+                return RedirectToAction("Details", "Invoices", new { id = invoiceId });
+            }
+
             var balanceDue = invoice.TotalAmount - invoice.PaidAmount;
             if (amount <= 0 || amount > balanceDue)
             {

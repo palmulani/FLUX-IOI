@@ -101,6 +101,11 @@ namespace Brightloop.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(string fullName, string email, string password, string confirmPassword, string? companyName, string? phone)
         {
+            ViewBag.FullName = fullName;
+            ViewBag.Email = email;
+            ViewBag.CompanyName = companyName;
+            ViewBag.Phone = phone;
+
             if (string.IsNullOrWhiteSpace(fullName) || string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
             {
                 ViewBag.Error = "All required fields must be filled.";

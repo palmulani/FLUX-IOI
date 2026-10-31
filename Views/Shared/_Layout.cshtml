@@ -37,15 +37,46 @@
         /* Sidebar */
         #sidebar {
             width: 260px;
-            min-height: 100vh;
+            height: 100vh;
+            max-height: 100vh;
             background: var(--sidebar-bg);
             color: #cbd5e1;
             position: fixed;
             top: 0;
             left: 0;
             z-index: 1000;
+            display: flex;
+            flex-direction: column;
             transition: all 0.3s;
             box-shadow: 4px 0 20px rgba(0,0,0,0.06);
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+        }
+
+        .sidebar-nav::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        .sidebar-bottom-card {
+            padding: 14px 20px 20px;
+            flex-shrink: 0;
+            margin-top: auto;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         #sidebar .brand {
@@ -259,12 +290,14 @@
             }
         </div>
 
-        <div style="position: absolute; bottom: 20px; left: 20px; right: 20px; padding: 14px; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
-            <div class="d-flex align-items-center gap-2 mb-1">
-                <span class="pulse-dot"></span>
-                <span style="font-size: 12px; font-weight: 600; color: #e2e8f0;">System Live</span>
+        <div class="sidebar-bottom-card">
+            <div style="padding: 12px; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="pulse-dot"></span>
+                    <span style="font-size: 12px; font-weight: 600; color: #e2e8f0;">System Live</span>
+                </div>
+                <div style="font-size: 11px; color: #94a3b8;">SLA Response: &lt; 2.0s</div>
             </div>
-            <div style="font-size: 11px; color: #94a3b8;">SLA Response: &lt; 2.0s</div>
         </div>
     </div>
 

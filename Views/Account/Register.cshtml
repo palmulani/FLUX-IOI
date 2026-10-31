@@ -79,23 +79,23 @@
 
             <div class="mb-3">
                 <label class="form-label small fw-semibold text-muted">Full Name</label>
-                <input type="text" name="fullName" class="form-control" placeholder="e.g. Sarah Connor" required />
+                <input type="text" name="fullName" value="@ViewBag.FullName" class="form-control" placeholder="e.g. Sarah Connor" required />
             </div>
 
             <div class="row g-2 mb-3">
                 <div class="col-6">
                     <label class="form-label small fw-semibold text-muted">Company Name</label>
-                    <input type="text" name="companyName" class="form-control" placeholder="Acme Ltd" />
+                    <input type="text" name="companyName" value="@ViewBag.CompanyName" class="form-control" placeholder="Acme Ltd" />
                 </div>
                 <div class="col-6">
                     <label class="form-label small fw-semibold text-muted">Phone</label>
-                    <input type="text" name="phone" class="form-control" placeholder="+1-555-0100" />
+                    <input type="text" name="phone" value="@ViewBag.Phone" class="form-control" placeholder="+1-555-0100" />
                 </div>
             </div>
 
             <div class="mb-3">
                 <label class="form-label small fw-semibold text-muted">Email Address (Must be unique)</label>
-                <input type="email" name="email" class="form-control" placeholder="name@company.com" required />
+                <input type="email" name="email" value="@ViewBag.Email" class="form-control" placeholder="name@company.com" required />
             </div>
 
             <div class="mb-3">

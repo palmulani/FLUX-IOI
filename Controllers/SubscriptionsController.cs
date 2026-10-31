@@ -95,6 +95,21 @@ namespace Brightloop.Controllers
                 return RedirectToAction("Create");
             }
 
+            // Enforce Plan Minimum Quantity requirement from Problem Statement
+            var totalRequestedSeats = quantities != null ? quantities.Sum() : 0;
+            if (plan.MinQuantity > 0 && totalRequestedSeats < plan.MinQuantity)
+            {
+                TempData["Error"] = $"Plan '{plan.Name}' requires a minimum quantity of {plan.MinQuantity} seats/units. Current total: {totalRequestedSeats}.";
+                return RedirectToAction("Create");
+            }
+
+            // Enforce Plan Date Availability
+            if (plan.EndDate.HasValue && plan.EndDate.Value < DateTime.UtcNow)
+            {
+                TempData["Error"] = $"Plan '{plan.Name}' has reached its end date ({plan.EndDate.Value:yyyy-MM-dd}) and is no longer available for new subscriptions.";
+                return RedirectToAction("Create");
+            }
+
             var count = await _context.Subscriptions.CountAsync() + 1;
             var subNumber = $"SUB-{DateTime.UtcNow.Year}-{count:D4}";
 
