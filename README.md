@@ -1,6 +1,11 @@
 # 🌟 Brightloop Software - Unified Subscription Management Platform
 > **Odoo Hackathon 2026 Submission** | Built with **ASP.NET Core 8 & Entity Framework Core (SQLite)**
 
+> 🌐 **Live Public Web App (Instant Evaluator Access):**  
+> **[https://algorithms-trackback-choosing-ipaq.trycloudflare.com](https://algorithms-trackback-choosing-ipaq.trycloudflare.com)**  
+> *(No installation needed — live cloud tunnel active for hackathon evaluation)*
+
+[![Live Web App](https://img.shields.io/badge/Live%20Demo-Online%20Now-success.svg)](https://algorithms-trackback-choosing-ipaq.trycloudflare.com)
 [![.NET 8.0](https://img.shields.io/badge/.NET-8.0-blue.svg)](https://dotnet.microsoft.com/)
 [![SQLite](https://img.shields.io/badge/Database-SQLite-lightgrey.svg)](https://www.sqlite.org/)
 [![AI Copilot](https://img.shields.io/badge/AI-OpenRouter%20Gemini-purple.svg)](https://openrouter.ai/)
