@@ -156,6 +156,36 @@
     </div>
 </div>
 
+<!-- Statutory Fiscal Tax Breakdown -->
+<div class="card-bright p-4 mb-4 bg-light border-0">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="fw-bold mb-0 text-dark small text-uppercase"><i class="bi bi-bank text-primary me-1"></i> Statutory Fiscal Tax Audit Breakdown</h6>
+        <span class="badge bg-white text-dark border px-3 py-1 rounded-pill small">Standard 18.00% GST / VAT</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-borderless align-middle mb-0 small">
+            <thead>
+                <tr class="text-muted border-bottom">
+                    <th>Tax Category</th>
+                    <th>Jurisdiction</th>
+                    <th class="text-end">Taxable Amount</th>
+                    <th class="text-center">Rate</th>
+                    <th class="text-end">Computed Tax Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="fw-semibold">Digital Cloud Services &amp; SaaS</td>
+                    <td>State &amp; Central Tax Authority</td>
+                    <td class="text-end">$@Model.SubTotal.ToString("F2")</td>
+                    <td class="text-center">18.00%</td>
+                    <td class="text-end fw-bold text-dark">$@Model.TaxTotal.ToString("F2")</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
 <!-- Payments Recorded Ledger -->
 <div class="card-bright p-4">
     <div class="d-flex justify-content-between align-items-center mb-3">

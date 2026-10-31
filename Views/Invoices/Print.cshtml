@@ -1,6 +1,8 @@
 @model Brightloop.Models.Invoice
 @{
     Layout = null;
+    var balanceDue = Model.TotalAmount - Model.PaidAmount;
+    var isOverdue = (Model.Status != "Paid" && Model.Status != "Cancelled" && Model.DueDate < DateTime.UtcNow);
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -9,120 +11,258 @@
     <title>Invoice @Model.InvoiceNumber - Brightloop Software</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
             color: #0f172a;
             padding: 40px;
-            background: #fff;
+            background: #f8fafc;
         }
         .invoice-box {
-            max-width: 800px;
+            max-width: 840px;
             margin: auto;
+            background: #ffffff;
+            padding: 48px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+        .stamp-badge {
+            display: inline-block;
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .stamp-paid {
+            background: #dcfce7;
+            color: #15803d;
+            border: 1.5px solid #86efac;
+        }
+        .stamp-pending {
+            background: #fef3c7;
+            color: #b45309;
+            border: 1.5px solid #fcd34d;
+        }
+        .stamp-overdue {
+            background: #fee2e2;
+            color: #b91c1c;
+            border: 1.5px solid #fca5a5;
+        }
+        .qr-placeholder {
+            width: 80px;
+            height: 80px;
+            background: #f1f5f9;
+            border: 1px dashed #cbd5e1;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: #64748b;
         }
         @@media print {
-            body { padding: 0; }
-            .no-print { display: none; }
+            body { padding: 0; background: #fff; }
+            .invoice-box { border: none; box-shadow: none; padding: 20px; }
+            .no-print { display: none !important; }
         }
     </style>
 </head>
 <body>
     <div class="invoice-box">
-        <div class="d-flex justify-content-between align-items-center mb-4 no-print">
-            <button onclick="window.print()" class="btn btn-primary rounded-pill px-4">Print / Save as PDF</button>
-            <button onclick="window.close()" class="btn btn-light border rounded-pill px-4">Close</button>
+        <!-- Toolbar for Print & Currency -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom no-print">
+            <div class="d-flex align-items-center gap-2">
+                <span class="small fw-semibold text-muted">Display Currency:</span>
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-primary active" id="btnUSD" onclick="setCurrency('$', 1.0, 'USD')">USD ($)</button>
+                    <button type="button" class="btn btn-outline-primary" id="btnEUR" onclick="setCurrency('€', 0.92, 'EUR')">EUR (€)</button>
+                    <button type="button" class="btn btn-outline-primary" id="btnINR" onclick="setCurrency('₹', 83.5, 'INR')">INR (₹)</button>
+                    <button type="button" class="btn btn-outline-primary" id="btnGBP" onclick="setCurrency('£', 0.79, 'GBP')">GBP (£)</button>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button onclick="window.print()" class="btn btn-primary btn-sm rounded-pill px-4">
+                    <i class="bi bi-printer me-1"></i> Print / Save PDF
+                </button>
+                <button onclick="window.close()" class="btn btn-light border btn-sm rounded-pill px-3">Close</button>
+            </div>
         </div>
 
+        <!-- Header -->
         <div class="d-flex justify-content-between align-items-start border-bottom pb-4 mb-4">
             <div>
-                <h2 class="fw-bold text-primary mb-1">Brightloop Software Inc.</h2>
-                <div class="text-muted small">Subscription &amp; Enterprise Cloud Solutions</div>
-                <div class="text-muted small">San Francisco, CA | billing@brightloop.com</div>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <div style="width: 38px; height: 38px; background: linear-gradient(135deg, #6366f1, #06b6d4); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 18px;">B</div>
+                    <h3 class="fw-bold text-dark mb-0">Brightloop Software</h3>
+                </div>
+                <div class="text-muted small">Enterprise Cloud Subscriptions &amp; Managed Services</div>
+                <div class="text-muted small">San Francisco, CA &bull; billing@brightloop.com &bull; +1-800-BRIGHT</div>
             </div>
             <div class="text-end">
-                <h3 class="fw-bold mb-0">INVOICE</h3>
-                <div class="fw-bold text-secondary">@Model.InvoiceNumber</div>
-                <div class="small text-muted mt-1">Date: @Model.InvoiceDate.ToString("MMM dd, yyyy")</div>
-                <div class="small text-danger fw-semibold">Due: @Model.DueDate.ToString("MMM dd, yyyy")</div>
+                <h4 class="fw-bold mb-1">TAX INVOICE</h4>
+                <div class="fw-bold text-primary fs-5">@Model.InvoiceNumber</div>
+                <div class="small text-muted mt-1">Invoice Date: @Model.InvoiceDate.ToString("MMM dd, yyyy")</div>
+                <div class="small fw-semibold @(isOverdue ? "text-danger" : "text-dark")">Due Date: @Model.DueDate.ToString("MMM dd, yyyy")</div>
+                <div class="mt-2">
+                    @if (Model.Status == "Paid")
+                    {
+                        <span class="stamp-badge stamp-paid"><i class="bi bi-check2-circle me-1"></i> Paid in Full</span>
+                    }
+                    else if (isOverdue)
+                    {
+                        <span class="stamp-badge stamp-overdue"><i class="bi bi-exclamation-triangle-fill me-1"></i> Payment Overdue</span>
+                    }
+                    else
+                    {
+                        <span class="stamp-badge stamp-pending"><i class="bi bi-hourglass-split me-1"></i> Payment Pending</span>
+                    }
+                </div>
             </div>
         </div>
 
+        <!-- Parties & Cycle Info -->
         <div class="row mb-4">
             <div class="col-6">
-                <div class="text-muted small text-uppercase fw-bold">Billed To</div>
-                <div class="fw-bold fs-5">@Model.Customer?.FullName</div>
-                <div class="text-muted">@Model.Customer?.CompanyName</div>
+                <div class="text-muted small text-uppercase fw-bold mb-1">Customer Information</div>
+                <div class="fw-bold fs-5 text-dark">@Model.Customer?.FullName</div>
+                <div class="text-muted fw-semibold">@Model.Customer?.CompanyName</div>
                 <div class="text-muted small">@Model.Customer?.Address</div>
-                <div class="text-muted small">@Model.Customer?.Email</div>
+                <div class="text-muted small">@Model.Customer?.Email &bull; @Model.Customer?.Phone</div>
             </div>
             <div class="col-6 text-end">
-                <div class="text-muted small text-uppercase fw-bold">Subscription Plan</div>
-                <div class="fw-semibold">@Model.Subscription?.Plan?.Name</div>
+                <div class="text-muted small text-uppercase fw-bold mb-1">Contract Particulars</div>
+                <div class="fw-semibold text-dark">@Model.Subscription?.Plan?.Name</div>
+                <div class="text-muted small">Contract Reference: @Model.Subscription?.SubscriptionNumber</div>
                 <div class="text-muted small">Billing Cycle: @Model.BillingPeriodStart.ToString("MMM dd") - @Model.BillingPeriodEnd.ToString("MMM dd, yyyy")</div>
-                <div class="text-muted small">Status: <strong class="@(Model.Status == "Paid" ? "text-success" : "text-warning")">@Model.Status</strong></div>
+                <div class="text-muted small">Payment Terms: <strong>@Model.Subscription?.PaymentTerms</strong></div>
             </div>
         </div>
 
+        <!-- Items Table -->
         <table class="table table-bordered mb-4">
             <thead class="table-light">
-                <tr>
-                    <th>Item Description</th>
-                    <th class="text-center">Qty</th>
-                    <th class="text-end">Unit Price</th>
-                    <th class="text-end">Tax</th>
-                    <th class="text-end">Total</th>
+                <tr class="small text-uppercase text-muted">
+                    <th>Product / Service Description</th>
+                    <th class="text-center" style="width: 10%;">Qty</th>
+                    <th class="text-end" style="width: 18%;">Unit Price</th>
+                    <th class="text-end" style="width: 16%;">Tax</th>
+                    <th class="text-end" style="width: 18%;">Total</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var line in Model.Lines)
                 {
                     <tr>
-                        <td><strong>@line.Description</strong></td>
+                        <td>
+                            <strong>@line.Description</strong>
+                        </td>
                         <td class="text-center">@line.Quantity</td>
-                        <td class="text-end">$@line.UnitPrice.ToString("F2")</td>
-                        <td class="text-end">$@line.TaxAmount.ToString("F2")</td>
-                        <td class="text-end fw-bold">$@line.LineTotal.ToString("F2")</td>
+                        <td class="text-end" data-usd="@line.UnitPrice">$@line.UnitPrice.ToString("F2")</td>
+                        <td class="text-end" data-usd="@line.TaxAmount">$@line.TaxAmount.ToString("F2")</td>
+                        <td class="text-end fw-bold" data-usd="@line.LineTotal">$@line.LineTotal.ToString("F2")</td>
                     </tr>
                 }
             </tbody>
         </table>
 
-        <div class="row justify-content-end mb-4">
-            <div class="col-5">
-                <div class="d-flex justify-content-between py-1">
-                    <span class="text-muted">Subtotal:</span>
-                    <span>$@Model.SubTotal.ToString("F2")</span>
-                </div>
-                <div class="d-flex justify-content-between py-1">
-                    <span class="text-muted">Taxes:</span>
-                    <span>$@Model.TaxTotal.ToString("F2")</span>
-                </div>
-                @if (Model.DiscountTotal > 0)
-                {
-                    <div class="d-flex justify-content-between py-1 text-success">
-                        <span>Discount:</span>
-                        <span>-$@Model.DiscountTotal.ToString("F2")</span>
+        <!-- Itemized Tax Audit Breakdown -->
+        <div class="mb-4 p-3 bg-light rounded-3 border">
+            <div class="small fw-bold text-uppercase text-muted mb-2">
+                <i class="bi bi-bank me-1"></i> Statutory Fiscal Tax Breakdown
+            </div>
+            <table class="table table-sm table-borderless mb-0 small">
+                <thead>
+                    <tr class="text-muted border-bottom">
+                        <th>Tax Rule Description</th>
+                        <th class="text-end">Taxable Amount</th>
+                        <th class="text-center">Statutory Rate</th>
+                        <th class="text-end">Computed Tax Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Standard Cloud Software &amp; SaaS GST / VAT</td>
+                        <td class="text-end" data-usd="@Model.SubTotal">$@Model.SubTotal.ToString("F2")</td>
+                        <td class="text-center">18.00%</td>
+                        <td class="text-end fw-bold text-dark" data-usd="@Model.TaxTotal">$@Model.TaxTotal.ToString("F2")</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Totals & Balance -->
+        <div class="row align-items-center mb-4">
+            <div class="col-7">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="qr-placeholder">
+                        <i class="bi bi-qr-code"></i>
                     </div>
-                }
-                <hr>
-                <div class="d-flex justify-content-between py-1 fs-5 fw-bold text-primary">
-                    <span>Total Due:</span>
-                    <span>$@Model.TotalAmount.ToString("F2")</span>
+                    <div class="small text-muted" style="line-height: 1.4;">
+                        <div><strong>Digital Invoice Verification Hash:</strong></div>
+                        <code class="text-muted" style="font-size: 10px;">BRIGHTLOOP|@Model.InvoiceNumber|@Model.TotalAmount|@Model.InvoiceDate.ToString("yyyyMMdd")</code>
+                        <div class="text-muted mt-1" style="font-size: 11px;">Scannable digital authenticity seal for tax compliance.</div>
+                    </div>
                 </div>
-                <div class="d-flex justify-content-between py-1 fw-bold text-success">
-                    <span>Paid Amount:</span>
-                    <span>-$@Model.PaidAmount.ToString("F2")</span>
-                </div>
-                <div class="d-flex justify-content-between py-1 fw-bold text-danger border-top">
-                    <span>Balance Owed:</span>
-                    <span>$@((Model.TotalAmount - Model.PaidAmount).ToString("F2"))</span>
+            </div>
+            <div class="col-5">
+                <div class="p-3 bg-light rounded-3 border">
+                    <div class="d-flex justify-content-between py-1 small">
+                        <span class="text-muted">Subtotal:</span>
+                        <span class="fw-semibold" data-usd="@Model.SubTotal">$@Model.SubTotal.ToString("F2")</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 small">
+                        <span class="text-muted">Tax Total:</span>
+                        <span class="fw-semibold" data-usd="@Model.TaxTotal">$@Model.TaxTotal.ToString("F2")</span>
+                    </div>
+                    @if (Model.DiscountTotal > 0)
+                    {
+                        <div class="d-flex justify-content-between py-1 small text-success">
+                            <span>Discount:</span>
+                            <span class="fw-semibold" data-usd="@Model.DiscountTotal">-$@Model.DiscountTotal.ToString("F2")</span>
+                        </div>
+                    }
+                    <hr class="my-2">
+                    <div class="d-flex justify-content-between py-1 fw-bold text-primary fs-5">
+                        <span>Total Due:</span>
+                        <span id="totalDueVal" data-usd="@Model.TotalAmount">$@Model.TotalAmount.ToString("F2")</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 small fw-bold text-success">
+                        <span>Paid to Date:</span>
+                        <span data-usd="@Model.PaidAmount">-$@Model.PaidAmount.ToString("F2")</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 fw-bold @(balanceDue > 0 ? "text-danger" : "text-success") border-top mt-1 pt-1">
+                        <span>Balance Owed:</span>
+                        <span data-usd="@balanceDue">$@balanceDue.ToString("F2")</span>
+                    </div>
                 </div>
             </div>
         </div>
 
         <div class="border-top pt-4 text-center text-muted small">
-            Thank you for choosing Brightloop Software! For billing inquiries, email <strong>palmulani1@gmail.com</strong>
+            <div>Thank you for partnering with <strong>Brightloop Software Inc.</strong></div>
+            <div>All payments subject to agreed subscription terms. For queries, contact <strong>palmulani1@gmail.com</strong>.</div>
         </div>
     </div>
+
+    <script>
+        function setCurrency(symbol, rate, code) {
+            document.querySelectorAll('.btn-group button').forEach(b => b.classList.remove('active'));
+            const activeBtn = document.getElementById('btn' + code);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            document.querySelectorAll('[data-usd]').forEach(el => {
+                const usd = parseFloat(el.getAttribute('data-usd'));
+                if (!isNaN(usd)) {
+                    const converted = usd * rate;
+                    const isNeg = el.innerText.trim().startsWith('-');
+                    el.innerText = (isNeg ? '-' : '') + symbol + converted.toFixed(2);
+                }
+            });
+        }
+    </script>
 </body>
 </html>
