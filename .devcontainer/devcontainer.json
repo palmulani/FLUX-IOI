@@ -1,0 +1,21 @@
+{
+  "name": "Brightloop Subscription Platform",
+  "image": "mcr.microsoft.com/devcontainers/dotnet:8.0",
+  "forwardPorts": [5000],
+  "portsAttributes": {
+    "5000": {
+      "label": "Brightloop Web Application",
+      "onAutoForward": "openBrowser",
+      "visibility": "public"
+    }
+  },
+  "postCreateCommand": "dotnet restore",
+  "postStartCommand": "dotnet run --urls 'http://0.0.0.0:5000'",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp"
+      ]
+    }
+  }
+}

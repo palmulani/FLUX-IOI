@@ -7,16 +7,16 @@
 }
 
 <!-- Welcome Header -->
-<div class="card-bright p-4 mb-4 bg-gradient" style="background: linear-gradient(135deg, #1e1b4b, #312e81); color: #fff;">
+<div class="p-4 mb-4 rounded-4 shadow-sm" style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%) !important; color: #ffffff !important; border: 1px solid #4338ca;">
     <div class="d-flex justify-content-between align-items-center">
         <div>
             <div class="badge bg-white text-primary px-3 py-1 rounded-pill small mb-2 fw-semibold">Customer Self-Service Hub</div>
-            <h3 class="fw-bold mb-1">Welcome, @customer?.FullName</h3>
-            <p class="mb-0 text-white-50 small">Manage your Brightloop software subscriptions, renewals, and invoices without waiting for support</p>
+            <h3 class="fw-bold mb-1" style="color: #ffffff !important;">Welcome, @customer?.FullName</h3>
+            <p class="mb-0 small" style="color: rgba(255, 255, 255, 0.85) !important;">Manage your Brightloop software subscriptions, renewals, and invoices without waiting for support</p>
         </div>
         <div class="text-end d-none d-md-block">
-            <div class="small text-white-50">Account ID:</div>
-            <div class="fw-bold">@customer?.Email</div>
+            <div class="small" style="color: rgba(255, 255, 255, 0.75) !important;">Account ID:</div>
+            <div class="fw-bold" style="color: #ffffff !important;">@customer?.Email</div>
         </div>
     </div>
 </div>
