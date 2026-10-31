@@ -1,0 +1,122 @@
+@model List<Brightloop.Models.Invoice>
+@{
+    ViewData["Title"] = "Customer Invoices";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Customer Invoices</h4>
+        <p class="text-muted small mb-0">Track recurring invoices, payments, tax calculations, and overdue balances</p>
+    </div>
+    <form asp-controller="Dashboard" asp-action="RunBillingDay" method="post" class="d-inline" onsubmit="return confirm('Execute automated Billing Day batch?');">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-primary-bright">
+            <i class="bi bi-lightning-charge-fill text-warning me-1"></i> Run Billing Day Batch
+        </button>
+    </form>
+</div>
+
+<!-- Filters -->
+<div class="card-bright p-3 mb-4">
+    <div class="d-flex flex-wrap gap-2">
+        <a href="@Url.Action("Index", "Invoices", new { filter = "all" })" class="btn btn-sm rounded-pill @(ViewBag.CurrentFilter == "all" ? "btn-dark" : "btn-light border")">All Invoices</a>
+        <a href="@Url.Action("Index", "Invoices", new { filter = "draft" })" class="btn btn-sm rounded-pill @(ViewBag.CurrentFilter == "draft" ? "btn-secondary text-white" : "btn-light border")">Draft</a>
+        <a href="@Url.Action("Index", "Invoices", new { filter = "confirmed" })" class="btn btn-sm rounded-pill @(ViewBag.CurrentFilter == "confirmed" ? "btn-warning text-dark" : "btn-light border")">Confirmed / Unpaid</a>
+        <a href="@Url.Action("Index", "Invoices", new { filter = "paid" })" class="btn btn-sm rounded-pill @(ViewBag.CurrentFilter == "paid" ? "btn-success" : "btn-light border")">Fully Paid</a>
+        <a href="@Url.Action("Index", "Invoices", new { filter = "overdue" })" class="btn btn-sm rounded-pill @(ViewBag.CurrentFilter == "overdue" ? "btn-danger" : "btn-light border")">
+            <i class="bi bi-exclamation-circle-fill me-1"></i> Overdue
+        </a>
+    </div>
+</div>
+
+<div class="card-bright p-4">
+    @if (Model.Count == 0)
+    {
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-receipt fs-1 d-block mb-2"></i>
+            No invoices found matching filter.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr class="text-muted small text-uppercase">
+                        <th>Invoice #</th>
+                        <th>Customer</th>
+                        <th>Invoice Date</th>
+                        <th>Due Date</th>
+                        <th>Total</th>
+                        <th>Balance Due</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var inv in Model)
+                    {
+                        var isOverdue = (inv.Status != "Paid" && inv.Status != "Cancelled" && inv.DueDate < DateTime.UtcNow);
+                        <tr>
+                            <td>
+                                <a href="@Url.Action("Details", "Invoices", new { id = inv.Id })" class="fw-bold text-decoration-none" style="color: #4f46e5;">
+                                    @inv.InvoiceNumber
+                                </a>
+                                @if (inv.SentViaEmail)
+                                {
+                                    <span class="badge bg-light text-muted border ms-1" title="Sent via email"><i class="bi bi-envelope-check"></i></span>
+                                }
+                            </td>
+                            <td>
+                                <div class="fw-semibold">@inv.Customer?.FullName</div>
+                                <div class="small text-muted">@inv.Customer?.CompanyName</div>
+                            </td>
+                            <td>@inv.InvoiceDate.ToString("MMM dd, yyyy")</td>
+                            <td>
+                                @if (isOverdue)
+                                {
+                                    <span class="text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> @inv.DueDate.ToString("MMM dd, yyyy")</span>
+                                }
+                                else
+                                {
+                                    <span>@inv.DueDate.ToString("MMM dd, yyyy")</span>
+                                }
+                            </td>
+                            <td class="fw-bold">$@inv.TotalAmount.ToString("F2")</td>
+                            <td>
+                                @{
+                                    var balance = inv.TotalAmount - inv.PaidAmount;
+                                }
+                                @if (balance <= 0)
+                                {
+                                    <span class="text-success fw-semibold">$0.00</span>
+                                }
+                                else if (isOverdue)
+                                {
+                                    <span class="text-danger fw-bold">$@balance.ToString("F2")</span>
+                                }
+                                else
+                                {
+                                    <span class="text-dark fw-semibold">$@balance.ToString("F2")</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge @(inv.Status == "Paid" ? "badge-paid" : (inv.Status == "Draft" ? "badge-draft" : (isOverdue ? "badge-closed" : "badge-confirmed"))) px-3 py-1 rounded-pill">
+                                    @(isOverdue ? "Overdue" : inv.Status)
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <a href="@Url.Action("Print", "Invoices", new { id = inv.Id })" target="_blank" class="btn btn-sm btn-light border rounded-pill px-3 me-1" title="Print Invoice">
+                                    <i class="bi bi-printer"></i>
+                                </a>
+                                <a href="@Url.Action("Details", "Invoices", new { id = inv.Id })" class="btn btn-sm btn-light border rounded-pill px-3">
+                                    Details
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
