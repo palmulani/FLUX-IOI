@@ -27,7 +27,73 @@ namespace Brightloop.Controllers
                 .Take(10)
                 .ToListAsync();
 
-            ViewBag.Customers = await _context.Users.Where(u => u.Role == "Customer").ToListAsync();
+            var customers = await _context.Users.Where(u => u.Role == "Customer").ToListAsync();
+
+            // Build Executive Customer Health & Churn Risk Matrix
+            var healthMatrix = new List<CustomerHealthScoreItem>();
+            var now = DateTime.UtcNow;
+
+            foreach (var c in customers)
+            {
+                var activeSubs = await _context.Subscriptions
+                    .Include(s => s.Plan)
+                    .Where(s => s.CustomerId == c.Id && s.Status == "Active")
+                    .ToListAsync();
+
+                var overdueInvoices = await _context.Invoices
+                    .Where(i => i.CustomerId == c.Id && i.Status != "Paid" && i.Status != "Cancelled" && i.DueDate < now)
+                    .ToListAsync();
+
+                var totalPaid = (await _context.Payments
+                    .Where(p => p.CustomerId == c.Id)
+                    .Select(p => p.Amount)
+                    .ToListAsync()).Sum();
+
+                decimal monthlyCommitment = activeSubs.Sum(s => s.TotalAmount);
+                int overdueCount = overdueInvoices.Count;
+
+                // Heuristic Risk Calculation
+                int riskScore = 12; // Base healthy score
+                string riskCategory = "Low Risk";
+                string recommendedAction = "Schedule Quarterly Business Review & Plan Expansion";
+
+                if (overdueCount > 0)
+                {
+                    riskScore = Math.Min(95, 45 + (overdueCount * 25));
+                    riskCategory = riskScore >= 75 ? "Critical / High Risk" : "Elevated Risk";
+                    recommendedAction = $"Deploy automated debt chase & offer Net 30 relief";
+                }
+                else if (activeSubs.Count == 0)
+                {
+                    riskScore = 80;
+                    riskCategory = "At Risk of Abandonment";
+                    recommendedAction = "Engage account with 15% win-back incentive";
+                }
+                else if (monthlyCommitment > 1000)
+                {
+                    riskScore = 8;
+                    riskCategory = "VIP / Enterprise Champion";
+                    recommendedAction = "Present annual renewal bundle with dedicated TAM";
+                }
+
+                healthMatrix.Add(new CustomerHealthScoreItem
+                {
+                    CustomerId = c.Id,
+                    FullName = c.FullName,
+                    Email = c.Email,
+                    Company = c.CompanyName ?? "Independent Enterprise",
+                    ActiveSubscriptionCount = activeSubs.Count,
+                    MonthlyCommitment = monthlyCommitment,
+                    TotalLifetimePaid = totalPaid,
+                    OverdueInvoiceCount = overdueCount,
+                    RiskScore = riskScore,
+                    RiskCategory = riskCategory,
+                    RecommendedAction = recommendedAction
+                });
+            }
+
+            ViewBag.Customers = customers;
+            ViewBag.HealthMatrix = healthMatrix;
             return View(logs);
         }
 
@@ -92,5 +158,20 @@ namespace Brightloop.Controllers
     {
         public string Prompt { get; set; } = string.Empty;
         public string? Category { get; set; }
+    }
+
+    public class CustomerHealthScoreItem
+    {
+        public int CustomerId { get; set; }
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Company { get; set; } = string.Empty;
+        public int ActiveSubscriptionCount { get; set; }
+        public decimal MonthlyCommitment { get; set; }
+        public decimal TotalLifetimePaid { get; set; }
+        public int OverdueInvoiceCount { get; set; }
+        public int RiskScore { get; set; }
+        public string RiskCategory { get; set; } = string.Empty;
+        public string RecommendedAction { get; set; } = string.Empty;
     }
 }
