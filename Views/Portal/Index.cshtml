@@ -3,6 +3,7 @@
     ViewData["Title"] = "Customer Portal";
     var customer = ViewBag.Customer as Brightloop.Models.User;
     var invoices = ViewBag.Invoices as List<Brightloop.Models.Invoice> ?? new List<Brightloop.Models.Invoice>();
+    var payments = ViewBag.Payments as List<Brightloop.Models.Payment> ?? new List<Brightloop.Models.Payment>();
 }
 
 <!-- Welcome Header -->
@@ -50,19 +51,35 @@
                     </div>
                 </div>
 
+                @{
+                    var daysUntilBill = (sub.NextBillingDate.Date - DateTime.UtcNow.Date).Days;
+                    var isBillOverdue = daysUntilBill < 0;
+                }
                 <div class="p-3 bg-light rounded-3 mb-3 small">
-                    <div class="d-flex justify-content-between mb-1">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="text-muted">Next Renewal / Billing Date:</span>
-                        <strong class="text-dark">@sub.NextBillingDate.ToString("MMM dd, yyyy")</strong>
+                        <div class="text-end">
+                            <strong class="text-dark">@sub.NextBillingDate.ToString("MMM dd, yyyy")</strong>
+                            <div class="badge @(isBillOverdue ? "bg-danger" : (daysUntilBill <= 5 ? "bg-warning text-dark" : "bg-primary")) px-2 py-0 ms-1" style="font-size: 11px;">
+                                @(isBillOverdue ? $"{Math.Abs(daysUntilBill)}d overdue" : $"{daysUntilBill}d remaining")
+                            </div>
+                        </div>
                     </div>
                     <div class="d-flex justify-content-between">
                         <span class="text-muted">Payment Terms:</span>
-                        <span>@sub.PaymentTerms</span>
+                        <span class="fw-semibold">@sub.PaymentTerms</span>
                     </div>
+                    @if (sub.ExpiryDate.HasValue)
+                    {
+                        <div class="d-flex justify-content-between mt-1 pt-1 border-top">
+                            <span class="text-muted">Contract Expiry:</span>
+                            <span>@sub.ExpiryDate.Value.ToString("MMM dd, yyyy")</span>
+                        </div>
+                    }
                 </div>
 
                 <!-- Self Service Action Controls -->
-                <div class="d-flex flex-wrap gap-2 pt-2 border-top">
+                <div class="d-flex flex-wrap gap-2 pt-2 border-top align-items-center">
                     @if (sub.Plan?.AllowPause == true && (sub.Status == "Active" || sub.Status == "Paused"))
                     {
                         <form asp-action="PauseSubscription" asp-route-id="@sub.Id" method="post" class="d-inline">
@@ -74,7 +91,7 @@
                         </form>
                     }
 
-                    @if (sub.Plan?.AllowRenew == true)
+                    @if (sub.Plan?.AllowRenew == true && sub.Status != "Closed")
                     {
                         <form asp-action="RenewSubscription" asp-route-id="@sub.Id" method="post" class="d-inline">
                             @Html.AntiForgeryToken()
@@ -82,6 +99,13 @@
                                 <i class="bi bi-arrow-clockwise me-1"></i> Extend / Renew 1 Month
                             </button>
                         </form>
+                    }
+
+                    @if (sub.Plan?.AllowEarlyClose == true && sub.Status == "Active")
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 ms-auto" onclick="openCancelModal(@sub.Id, '@sub.SubscriptionNumber', '@sub.Plan?.Name')">
+                            <i class="bi bi-x-circle me-1"></i> Cancel Plan
+                        </button>
                     }
                 </div>
             </div>
@@ -156,6 +180,100 @@
     }
 </div>
 
+<!-- Official Payment Receipts Ledger -->
+<h5 class="fw-bold mt-5 mb-3"><i class="bi bi-shield-check text-success me-2"></i> Official Payment Receipts &amp; Proof of Payment</h5>
+<div class="card-bright p-4">
+    @if (payments.Count == 0)
+    {
+        <div class="text-center py-4 text-muted">
+            <i class="bi bi-receipt-cutoff fs-2 d-block mb-2"></i>
+            No cleared payment transactions found on your account.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr class="text-muted small text-uppercase">
+                        <th>Receipt #</th>
+                        <th>Payment Date</th>
+                        <th>Applied Invoice</th>
+                        <th>Payment Method</th>
+                        <th class="text-end">Amount Cleared</th>
+                        <th class="text-end">Proof / Receipt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in payments)
+                    {
+                        <tr>
+                            <td class="fw-bold text-dark">@p.PaymentNumber</td>
+                            <td>@p.PaymentDate.ToString("MMM dd, yyyy HH:mm") UTC</td>
+                            <td>
+                                <span class="badge bg-light text-dark border px-2 py-1">
+                                    @(p.Invoice?.InvoiceNumber ?? $"INV-{p.InvoiceId}")
+                                </span>
+                            </td>
+                            <td>@p.PaymentMethod</td>
+                            <td class="text-end fw-bold text-success">$@p.Amount.ToString("F2")</td>
+                            <td class="text-end">
+                                <a href="@Url.Action("Receipt", "Portal", new { id = p.Id })" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                    <i class="bi bi-file-earmark-check me-1"></i> View Receipt
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<!-- Early Cancellation Request Modal -->
+<div class="modal fade" id="portalCancelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i> Close Subscription</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="CloseSubscription" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="cancelSubId" name="id" />
+                <div class="modal-body">
+                    <p class="text-muted small">
+                        You are initiating an early self-service contract termination for:
+                    </p>
+                    <div class="p-3 bg-light rounded-3 mb-3 text-center border">
+                        <div class="small text-muted" id="cancelSubNumber"></div>
+                        <h5 class="fw-bold text-dark mt-1 mb-0" id="cancelPlanName"></h5>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-muted">Primary Reason for Cancellation</label>
+                        <select name="reason" class="form-select" required>
+                            <option value="Project completed / no longer required">Project completed / no longer required</option>
+                            <option value="Switching to self-hosted infrastructure">Switching to self-hosted infrastructure</option>
+                            <option value="Budget constraints / downsizing team">Budget constraints / downsizing team</option>
+                            <option value="Missing features / required integrations">Missing features / required integrations</option>
+                            <option value="Other / seasonal pause">Other / seasonal pause</option>
+                        </select>
+                    </div>
+
+                    <div class="alert alert-warning border-0 small mb-0">
+                        <i class="bi bi-info-circle-fill me-1"></i> Once closed, access will terminate at the end of the current paid billing cycle, and no further automatic invoices will be generated.
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Keep Subscription</button>
+                    <button type="submit" class="btn btn-danger rounded-pill px-4">Confirm Early Closure</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Pay Online Modal -->
 <div class="modal fade" id="portalPayModal" tabindex="-1">
     <div class="modal-dialog">
@@ -209,6 +327,13 @@
             document.getElementById('portalPayInput').value = balance.toFixed(2);
             document.getElementById('portalPayInput').max = balance;
             new bootstrap.Modal(document.getElementById('portalPayModal')).show();
+        }
+
+        function openCancelModal(subId, subNum, planName) {
+            document.getElementById('cancelSubId').value = subId;
+            document.getElementById('cancelSubNumber').innerText = "Contract: " + subNum;
+            document.getElementById('cancelPlanName').innerText = planName;
+            new bootstrap.Modal(document.getElementById('portalCancelModal')).show();
         }
     </script>
 }

@@ -1,0 +1,156 @@
+@model Brightloop.Models.Payment
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Payment Receipt @Model.PaymentNumber - Brightloop Software</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #0f172a;
+            padding: 40px;
+            background: #f8fafc;
+        }
+        .receipt-box {
+            max-width: 720px;
+            margin: auto;
+            background: #ffffff;
+            padding: 44px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+        .stamp-success {
+            background: #dcfce7;
+            color: #15803d;
+            border: 1.5px solid #86efac;
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        @@media print {
+            body { padding: 0; background: #fff; }
+            .receipt-box { border: none; box-shadow: none; padding: 20px; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt-box">
+        <!-- Action Buttons -->
+        <div class="d-flex justify-content-between align-items-center mb-4 no-print pb-3 border-bottom">
+            <a href="javascript:window.history.back()" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                <i class="bi bi-arrow-left me-1"></i> Back to Portal
+            </a>
+            <button onclick="window.print()" class="btn btn-sm btn-primary rounded-pill px-4">
+                <i class="bi bi-printer me-1"></i> Print / Save as PDF
+            </button>
+        </div>
+
+        <!-- Header -->
+        <div class="row align-items-center mb-4">
+            <div class="col-7">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="fs-4">⚡</span>
+                    <h3 class="fw-bold mb-0 text-primary">Brightloop</h3>
+                </div>
+                <div class="text-muted small">
+                    Brightloop Software Inc.<br />
+                    Enterprise Cloud &amp; Subscription Billing<br />
+                    support@brightloop.io | +1 (800) 555-LOOP
+                </div>
+            </div>
+            <div class="col-5 text-end">
+                <div class="stamp-success mb-2">
+                    <i class="bi bi-check-circle-fill me-1"></i> Payment Cleared
+                </div>
+                <div class="small text-muted">Receipt Number:</div>
+                <h5 class="fw-bold mb-0 text-dark">@Model.PaymentNumber</h5>
+                <div class="small text-muted">Date: @Model.PaymentDate.ToString("MMM dd, yyyy HH:mm") UTC</div>
+            </div>
+        </div>
+
+        <hr class="my-4">
+
+        <!-- Billing Info -->
+        <div class="row mb-4">
+            <div class="col-6">
+                <div class="small text-muted text-uppercase fw-semibold mb-1">Paid By:</div>
+                <div class="fw-bold text-dark fs-6">@Model.Customer?.FullName</div>
+                <div class="small text-muted">@Model.Customer?.Email</div>
+                <div class="small text-muted">Customer ID: CUST-@Model.CustomerId.ToString("D4")</div>
+            </div>
+            <div class="col-6 text-end">
+                <div class="small text-muted text-uppercase fw-semibold mb-1">Applied Toward:</div>
+                <div class="fw-bold text-dark fs-6">Invoice @Model.Invoice?.InvoiceNumber</div>
+                @if (Model.Invoice?.Subscription != null)
+                {
+                    <div class="small text-muted">Contract: @Model.Invoice.Subscription.SubscriptionNumber</div>
+                    <div class="small text-muted">Plan: @Model.Invoice.Subscription.Plan?.Name</div>
+                }
+            </div>
+        </div>
+
+        <!-- Receipt Table -->
+        <div class="table-responsive mb-4">
+            <table class="table table-bordered align-middle mb-0">
+                <thead class="table-light small text-uppercase">
+                    <tr>
+                        <th>Transaction Description</th>
+                        <th>Payment Method</th>
+                        <th>Reference / Tx ID</th>
+                        <th class="text-end">Amount Cleared</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <div class="fw-bold">Subscription Invoice Settlement</div>
+                            <div class="small text-muted">Applied to @Model.Invoice?.InvoiceNumber</div>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border px-2 py-1">
+                                <i class="bi bi-credit-card me-1"></i> @Model.PaymentMethod
+                            </span>
+                        </td>
+                        <td>
+                            <span class="font-monospace small">@(string.IsNullOrEmpty(Model.ReferenceNote) ? Model.PaymentNumber : Model.ReferenceNote)</span>
+                        </td>
+                        <td class="text-end fw-bold text-success fs-5">
+                            $@Model.Amount.ToString("F2")
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Summary & Digital Seal -->
+        <div class="p-3 bg-light rounded-3 mb-4 d-flex justify-content-between align-items-center">
+            <div class="small text-muted">
+                <div><i class="bi bi-shield-check text-success me-1"></i> Verified Electronic Payment Authorization</div>
+                <code class="text-muted" style="font-size: 11px;">AUTH-HASH: SHA256-@Model.PaymentNumber-@Model.Amount-@Model.PaymentDate.Ticks</code>
+            </div>
+            <div class="text-end">
+                <div class="small text-muted">Total Paid</div>
+                <div class="fw-bold text-primary fs-3">$@Model.Amount.ToString("F2")</div>
+            </div>
+        </div>
+
+        <div class="border-top pt-4 text-center text-muted small">
+            <div>This is an official electronic proof of payment issued by Brightloop Software Inc.</div>
+            <div>Questions? Email billing at <strong>palmulani1@gmail.com</strong>.</div>
+        </div>
+    </div>
+</body>
+</html>

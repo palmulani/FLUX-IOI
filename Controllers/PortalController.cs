@@ -46,8 +46,15 @@ namespace Brightloop.Controllers
                 .OrderByDescending(i => i.InvoiceDate)
                 .ToListAsync();
 
+            var payments = await _context.Payments
+                .Include(p => p.Invoice)
+                .Where(p => p.CustomerId == userId)
+                .OrderByDescending(p => p.PaymentDate)
+                .ToListAsync();
+
             ViewBag.Customer = customer;
             ViewBag.Invoices = invoices;
+            ViewBag.Payments = payments;
 
             return View(subscriptions);
         }
@@ -99,6 +106,49 @@ namespace Brightloop.Controllers
 
             TempData["Success"] = "Subscription renewed successfully.";
             return RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CloseSubscription(int id, string reason)
+        {
+            var userId = GetCurrentUserId();
+            var sub = await _context.Subscriptions
+                .Include(s => s.Plan)
+                .FirstOrDefaultAsync(s => s.Id == id && s.CustomerId == userId);
+
+            if (sub == null) return NotFound();
+
+            if (sub.Plan != null && !sub.Plan.AllowEarlyClose)
+            {
+                TempData["Error"] = "Your current plan policy does not allow self-service early closure.";
+                return RedirectToAction("Index");
+            }
+
+            sub.Status = "Closed";
+            sub.ExpiryDate = DateTime.UtcNow;
+            sub.Notes = (string.IsNullOrEmpty(sub.Notes) ? "" : sub.Notes + " | ") +
+                        $"[Early Closed by Customer on {DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC. Reason: {reason ?? "Customer self-service termination"}]";
+
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Your subscription has been safely closed. No future recurring invoices will be generated.";
+            return RedirectToAction("Index");
+        }
+
+        public async Task<IActionResult> Receipt(int id)
+        {
+            var userId = GetCurrentUserId();
+            var payment = await _context.Payments
+                .Include(p => p.Customer)
+                .Include(p => p.Invoice)
+                    .ThenInclude(i => i!.Subscription)
+                        .ThenInclude(s => s!.Plan)
+                .FirstOrDefaultAsync(p => p.Id == id && p.CustomerId == userId);
+
+            if (payment == null) return NotFound();
+
+            return View(payment);
         }
 
         [HttpPost]
