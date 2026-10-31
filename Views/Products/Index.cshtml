@@ -1,0 +1,173 @@
+@model List<Brightloop.Models.Product>
+@{
+    ViewData["Title"] = "Product Catalog & Variants";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Products &amp; Variants Catalog</h4>
+        <p class="text-muted small mb-0">Manage SaaS subscriptions, services, add-ons, and brand variant pricing</p>
+    </div>
+    @if (User.IsInRole("Admin"))
+    {
+        <button class="btn btn-primary-bright" data-bs-toggle="modal" data-bs-target="#newProductModal">
+            <i class="bi bi-plus-circle me-1"></i> Launch New Product
+        </button>
+    }
+</div>
+
+<div class="row g-4">
+    @foreach (var prod in Model)
+    {
+        <div class="col-lg-6">
+            <div class="card-bright p-4 h-100">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <span class="badge bg-primary-subtle text-primary px-3 py-1 rounded-pill small mb-1">@prod.ProductType</span>
+                        <h5 class="fw-bold mb-0">@prod.Name</h5>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-bold fs-5 text-dark">$@prod.SalesPrice.ToString("F2")</div>
+                        <div class="small text-muted">Cost: $@prod.CostPrice.ToString("F2") (Margin: $@((prod.SalesPrice - prod.CostPrice).ToString("F2")))</div>
+                    </div>
+                </div>
+
+                <p class="text-muted small mt-2 mb-3">@prod.Notes</p>
+
+                <!-- Variants List -->
+                <div class="p-3 bg-light rounded-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small fw-bold text-uppercase text-muted">Configured Variants (@prod.Variants.Count)</span>
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <button class="btn btn-sm btn-link p-0 text-decoration-none" onclick="openVariantModal(@prod.Id, '@prod.Name')">
+                                <i class="bi bi-plus-lg"></i> Add Variant
+                            </button>
+                        }
+                    </div>
+
+                    @if (prod.Variants.Count == 0)
+                    {
+                        <div class="small text-muted fst-italic">Standard base pricing (no variants).</div>
+                    }
+                    else
+                    {
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var v in prod.Variants)
+                            {
+                                <span class="badge bg-white text-dark border px-3 py-2 rounded-3 shadow-xs">
+                                    <strong>@v.VariantName</strong>:
+                                    <span class="text-success fw-bold">+$@v.PriceExtra.ToString("F2")</span>
+                                    <span class="text-muted ms-1">(= $@((prod.SalesPrice + v.PriceExtra).ToString("F2")))</span>
+                                </span>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Launch New Product Modal -->
+<div class="modal fade" id="newProductModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Launch New Product</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-muted">Product Name</label>
+                        <input type="text" name="Name" class="form-control" placeholder="e.g. Brightloop Analytics Engine" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-muted">Product Type</label>
+                        <select name="ProductType" class="form-select">
+                            <option value="Software">Software Subscription</option>
+                            <option value="Service">Managed Service / SLA</option>
+                            <option value="AddOn">Storage or Usage Add-on</option>
+                        </select>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold text-muted">Sales Price ($)</label>
+                            <input type="number" step="0.01" name="SalesPrice" class="form-control" placeholder="1200.00" required />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold text-muted">Cost Price ($)</label>
+                            <input type="number" step="0.01" name="CostPrice" class="form-control" placeholder="350.00" required />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-muted">Product Description / Notes</label>
+                        <textarea name="Notes" class="form-control" rows="2" placeholder="Product details and SLA description"></textarea>
+                    </div>
+                    <hr>
+                    <h6 class="small fw-bold text-uppercase text-muted">Initial Variant (Optional)</h6>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <input type="text" name="variantName" class="form-control form-control-sm" placeholder="e.g. Brand: Odoo" />
+                        </div>
+                        <div class="col-6">
+                            <input type="number" step="0.01" name="variantPriceExtra" class="form-control form-control-sm" placeholder="Price Extra (e.g. 560)" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary-bright rounded-pill px-4">Create Product</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Variant Modal -->
+<div class="modal fade" id="addVariantModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Add Product Variant</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="AddVariant" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="varProductId" name="productId" />
+                <div class="modal-body">
+                    <p class="small text-muted" id="varProductName"></p>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-muted">Variant Name</label>
+                        <input type="text" name="variantName" class="form-control" placeholder="e.g. Brand: Odoo Enterprise" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-muted">Price Extra ($ Surcharge)</label>
+                        <input type="number" step="0.01" name="priceExtra" class="form-control" placeholder="560.00" required />
+                        <div class="form-text small">e.g. Choosing the Odoo brand adds 560 to base price.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-muted">SKU (Optional)</label>
+                        <input type="text" name="sku" class="form-control" placeholder="ERP-ODOO-560" />
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary-bright rounded-pill px-4">Save Variant</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function openVariantModal(prodId, prodName) {
+            document.getElementById('varProductId').value = prodId;
+            document.getElementById('varProductName').innerText = "Product: " + prodName;
+            new bootstrap.Modal(document.getElementById('addVariantModal')).show();
+        }
+    </script>
+}

@@ -1,0 +1,84 @@
+@model List<Brightloop.Models.TaxRule>
+@{
+    ViewData["Title"] = "Tax Rules Engine";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Tax Calculation Rules</h4>
+        <p class="text-muted small mb-0">Automatic fiscal calculation rules applied during billing runs</p>
+    </div>
+    <button class="btn btn-primary-bright" data-bs-toggle="modal" data-bs-target="#newTaxModal">
+        <i class="bi bi-plus-circle me-1"></i> Add Tax Rule
+    </button>
+</div>
+
+<div class="card-bright p-4">
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr class="text-muted small text-uppercase">
+                    <th>Tax Name</th>
+                    <th>Rate (%)</th>
+                    <th>Default Applied</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var t in Model)
+                {
+                    <tr>
+                        <td class="fw-bold text-dark"><i class="bi bi-bank text-primary me-2"></i> @t.Name</td>
+                        <td class="fw-bold fs-6">@t.TaxPercent.ToString("F2")%</td>
+                        <td>
+                            @if (t.IsDefault)
+                            {
+                                <span class="badge bg-success-subtle text-success px-3 py-1 rounded-pill"><i class="bi bi-check-circle me-1"></i> Default Rule</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">Standard Option</span>
+                            }
+                        </td>
+                        <td>
+                            <span class="badge bg-success-subtle text-success px-2 py-1 rounded-pill">Active</span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- New Tax Modal -->
+<div class="modal fade" id="newTaxModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Configure Tax Rule</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-muted">Tax Name</label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. California State Tax 7.25%" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-muted">Tax Rate (%)</label>
+                        <input type="number" step="0.01" name="taxPercent" class="form-control" placeholder="18.00" required />
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="isDefault" value="true" id="isDef">
+                        <label class="form-check-label small fw-semibold" for="isDef">Set as System Default Tax</label>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary-bright rounded-pill px-4">Save Tax Rule</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
