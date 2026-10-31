@@ -71,5 +71,44 @@ namespace Brightloop.Controllers
             TempData["Success"] = $"Quotation Template '{template.Name}' created successfully.";
             return RedirectToAction("Index");
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetTemplateData(int id)
+        {
+            var tmpl = await _context.QuotationTemplates
+                .Include(t => t.Lines)
+                    .ThenInclude(l => l.Product)
+                        .ThenInclude(p => p!.Variants)
+                .FirstOrDefaultAsync(t => t.Id == id);
+
+            if (tmpl == null) return NotFound(new { success = false, message = "Template not found" });
+
+            var result = new
+            {
+                success = true,
+                id = tmpl.Id,
+                name = tmpl.Name,
+                defaultPlanId = tmpl.DefaultPlanId,
+                validityDays = tmpl.ValidityDays,
+                terms = tmpl.TermsAndConditions,
+                lines = tmpl.Lines.Select(l => new
+                {
+                    productId = l.ProductId,
+                    productName = l.Product?.Name ?? "Item",
+                    basePrice = l.Product?.SalesPrice ?? 0m,
+                    variantId = l.VariantId,
+                    quantity = l.Quantity,
+                    discountPercent = l.DiscountPercent,
+                    variants = l.Product?.Variants?.Select(v => new
+                    {
+                        id = v.Id,
+                        variantName = v.VariantName,
+                        priceExtra = v.PriceExtra
+                    }).ToList() ?? new()
+                })
+            };
+
+            return Json(result);
+        }
     }
 }

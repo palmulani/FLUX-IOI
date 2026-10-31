@@ -23,7 +23,8 @@
                 <div class="text-muted small">Auto-fills pre-negotiated plans, variant lines, and discount tiers</div>
             </div>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <span id="templateNotice" class="badge bg-success-subtle text-success px-3 py-2 rounded-pill d-none"></span>
             <select id="templatePicker" class="form-select form-select-sm" onchange="loadTemplate(this.value)">
                 <option value="">-- Choose Template to Load --</option>
                 @foreach (var t in (List<Brightloop.Models.QuotationTemplate>)ViewBag.Templates)
@@ -221,9 +222,69 @@
 @section Scripts {
     <script>
         function loadTemplate(templateId) {
-            if (templateId) {
-                window.location.href = '@Url.Action("Create", "Subscriptions")?fromTemplateId=' + templateId;
-            }
+            if (!templateId) return;
+
+            const badge = document.getElementById('templateNotice');
+            badge.classList.remove('d-none');
+            badge.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Loading template blueprint...';
+
+            fetch('@Url.Action("GetTemplateData", "QuotationTemplates")?id=' + templateId)
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) return;
+
+                    // Set default plan
+                    const planSelect = document.getElementById('planSelect');
+                    if (data.defaultPlanId) {
+                        planSelect.value = data.defaultPlanId;
+                    }
+
+                    // Render lines
+                    const container = document.getElementById('linesContainer');
+                    container.innerHTML = '';
+
+                    data.lines.forEach(l => {
+                        let variantOptions = '<option value="0" data-extra="0">Standard Edition (+$0)</option>';
+                        l.variants.forEach(v => {
+                            const isSelected = (v.id === l.variantId) ? 'selected' : '';
+                            variantOptions += `<option value="${v.id}" data-extra="${v.priceExtra}" ${isSelected}>${v.variantName} (+$${v.priceExtra.toFixed(2)})</option>`;
+                        });
+
+                        const rowHtml = `
+                            <tr class="line-row">
+                                <td>
+                                    <select name="productIds" class="form-select product-selector" onchange="updateRowPrice(this)" required>
+                                        <option value="${l.productId}" data-price="${l.basePrice}" selected>${l.productName} ($${l.basePrice.toFixed(2)})</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select name="variantIds" class="form-select variant-selector" onchange="updateRowPrice(this)">
+                                        ${variantOptions}
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="number" name="quantities" value="${l.quantity}" min="1" class="form-control" />
+                                </td>
+                                <td>
+                                    <input type="number" step="0.01" name="unitPrices" value="${l.basePrice.toFixed(2)}" class="form-control price-input" />
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-light text-danger" onclick="this.closest('tr').remove(); recalculateEstimate();"><i class="bi bi-trash"></i></button>
+                                </td>
+                            </tr>`;
+                        container.innerHTML += rowHtml;
+                    });
+
+                    // Trigger row price update & recalculation
+                    document.querySelectorAll('#linesContainer .line-row').forEach(r => {
+                        updateRowPrice(r.querySelector('.variant-selector'));
+                    });
+
+                    badge.innerHTML = `<i class="bi bi-check2-circle me-1"></i> Loaded: <strong>${data.name}</strong> (${data.lines.length} lines, ${data.validityDays}d validity)`;
+                })
+                .catch(err => {
+                    badge.innerHTML = '<span class="text-danger">Failed to load template.</span>';
+                });
         }
 
         function addLineRow() {
