@@ -34,8 +34,10 @@ namespace Brightloop.Controllers
             var totalSubsCount = await _context.Subscriptions.CountAsync();
 
             // Total revenue collected (all payments)
-            var totalRevenueCollected = await _context.Payments
-                .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+            var paymentAmounts = await _context.Payments
+                .Select(p => p.Amount)
+                .ToListAsync();
+            var totalRevenueCollected = paymentAmounts.Sum();
 
             // Invoices query
             var allInvoices = await _context.Invoices
@@ -122,7 +124,8 @@ namespace Brightloop.Controllers
         public async Task<IActionResult> GetAiInsight()
         {
             var activeSubs = await _context.Subscriptions.CountAsync(s => s.Status == "Active");
-            var totalRev = await _context.Payments.SumAsync(p => (decimal?)p.Amount) ?? 0;
+            var payments = await _context.Payments.Select(p => p.Amount).ToListAsync();
+            var totalRev = payments.Sum();
             var overdue = await _context.Invoices.CountAsync(i => i.Status != "Paid" && i.DueDate < DateTime.UtcNow);
 
             var contextJson = $"{{\"ActiveSubscriptions\": {activeSubs}, \"TotalRevenueCollected\": {totalRev}, \"OverdueInvoices\": {overdue}}}";

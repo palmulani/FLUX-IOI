@@ -41,7 +41,8 @@ namespace Brightloop.Controllers
 
             // Gather dynamic financial context to feed the AI
             var activeSubsCount = await _context.Subscriptions.CountAsync(s => s.Status == "Active");
-            var totalRev = await _context.Payments.SumAsync(p => (decimal?)p.Amount) ?? 0m;
+            var paymentAmounts = await _context.Payments.Select(p => p.Amount).ToListAsync();
+            var totalRev = paymentAmounts.Sum();
             var overdueInvoices = await _context.Invoices
                 .Where(i => i.Status != "Paid" && i.Status != "Cancelled" && i.DueDate < DateTime.UtcNow)
                 .Select(i => new { i.InvoiceNumber, Customer = i.Customer!.FullName, Amount = i.TotalAmount - i.PaidAmount, i.DueDate })
@@ -78,7 +79,8 @@ namespace Brightloop.Controllers
             if (customer == null) return NotFound();
 
             var activeSubs = await _context.Subscriptions.CountAsync(s => s.CustomerId == customerId && s.Status == "Active");
-            var totalPaid = await _context.Payments.Where(p => p.CustomerId == customerId).SumAsync(p => (decimal?)p.Amount) ?? 0;
+            var customerPayments = await _context.Payments.Where(p => p.CustomerId == customerId).Select(p => p.Amount).ToListAsync();
+            var totalPaid = customerPayments.Sum();
             var overdue = await _context.Invoices.CountAsync(i => i.CustomerId == customerId && i.Status != "Paid" && i.DueDate < DateTime.UtcNow);
 
             var analysis = await _aiService.AnalyzeChurnRiskAsync(customer.FullName, activeSubs, totalPaid, overdue);
