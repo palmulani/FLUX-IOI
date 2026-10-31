@@ -1,0 +1,145 @@
+@{
+    Layout = null;
+    ViewData["Title"] = "Sign In";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign In - Brightloop Subscription Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .login-card {
+            background: #ffffff;
+            border-radius: 24px;
+            width: 100%;
+            max-width: 440px;
+            padding: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+        }
+        .btn-brand {
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            color: #fff;
+            border: none;
+            font-weight: 600;
+            padding: 12px;
+            border-radius: 12px;
+            width: 100%;
+            transition: all 0.2s;
+        }
+        .btn-brand:hover {
+            opacity: 0.95;
+            color: #fff;
+            transform: translateY(-1px);
+        }
+        .demo-pill {
+            cursor: pointer;
+            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: 1px dashed #cbd5e1;
+            transition: all 0.2s;
+            background: #f8fafc;
+        }
+        .demo-pill:hover {
+            background: #e0e7ff;
+            border-color: #6366f1;
+            color: #4f46e5;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="text-center mb-4">
+            <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #6366f1, #06b6d4); border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; color: #fff; margin-bottom: 12px;">
+                B
+            </div>
+            <h3 class="fw-bold mb-1">Brightloop Software</h3>
+            <p class="text-muted small">Subscription Management System</p>
+        </div>
+
+        @if (ViewBag.Error != null)
+        {
+            <div class="alert alert-danger py-2 px-3 small rounded-3 mb-3">
+                <i class="bi bi-exclamation-circle me-1"></i> @ViewBag.Error
+            </div>
+        }
+
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success py-2 px-3 small rounded-3 mb-3">
+                <i class="bi bi-check-circle me-1"></i> @TempData["Success"]
+            </div>
+        }
+
+        <form method="post" asp-action="Login">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="returnUrl" value="@ViewBag.ReturnUrl" />
+
+            <div class="mb-3">
+                <label class="form-label small fw-semibold text-muted">Email Address</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-envelope text-muted"></i></span>
+                    <input type="email" id="emailInput" name="email" class="form-control border-start-0" placeholder="name@company.com" required />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label class="form-label small fw-semibold text-muted mb-0">Password</label>
+                    <a href="@Url.Action("ForgotPassword", "Account")" class="small text-decoration-none" style="color: #4f46e5;">Forgot?</a>
+                </div>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock text-muted"></i></span>
+                    <input type="password" id="passwordInput" name="password" class="form-control border-start-0" placeholder="••••••••" required />
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-brand mt-2">Sign In</button>
+        </form>
+
+        <div class="mt-4 pt-3 border-top text-center">
+            <span class="small text-muted">New customer? </span>
+            <a href="@Url.Action("Register", "Account")" class="small fw-semibold text-decoration-none" style="color: #4f46e5;">Create Account</a>
+        </div>
+
+        <!-- One-Click Demo Logins for Evaluator -->
+        <div class="mt-4 pt-3 border-top">
+            <div class="small fw-bold text-muted mb-2 text-center text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">⚡ One-Click Demo Credentials for Evaluator</div>
+            <div class="d-flex flex-wrap gap-2 justify-content-center">
+                <span class="demo-pill" onclick="fillCreds('admin@brightloop.com', 'Admin@123456')">
+                    <i class="bi bi-shield-lock-fill text-danger"></i> Admin
+                </span>
+                <span class="demo-pill" onclick="fillCreds('staff@brightloop.com', 'Staff@123456')">
+                    <i class="bi bi-person-badge-fill text-primary"></i> Staff
+                </span>
+                <span class="demo-pill" onclick="fillCreds('acme@shop.com', 'Customer@123')">
+                    <i class="bi bi-shop text-success"></i> Customer (Acme)
+                </span>
+                <span class="demo-pill" onclick="fillCreds('palmulni1@gmail.com', 'Brightloop@2026')">
+                    <i class="bi bi-person-check-fill text-warning"></i> Pal Mulani
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function fillCreds(email, pass) {
+            document.getElementById('emailInput').value = email;
+            document.getElementById('passwordInput').value = pass;
+        }
+    </script>
+</body>
+</html>

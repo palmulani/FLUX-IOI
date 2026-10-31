@@ -1,0 +1,148 @@
+@{
+    Layout = null;
+    ViewData["Title"] = "Customer Registration";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Customer Signup - Brightloop Software</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 30px 20px;
+        }
+        .register-card {
+            background: #ffffff;
+            border-radius: 24px;
+            width: 100%;
+            max-width: 500px;
+            padding: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+        }
+        .btn-brand {
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            color: #fff;
+            border: none;
+            font-weight: 600;
+            padding: 12px;
+            border-radius: 12px;
+            width: 100%;
+            transition: all 0.2s;
+        }
+        .rule-badge {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            background: #f1f5f9;
+            color: #64748b;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s;
+        }
+        .rule-badge.valid {
+            background: #dcfce7;
+            color: #15803d;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="register-card">
+        <div class="text-center mb-4">
+            <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #6366f1, #06b6d4); border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; color: #fff; margin-bottom: 12px;">
+                B
+            </div>
+            <h3 class="fw-bold mb-1">Create Customer Account</h3>
+            <p class="text-muted small">Access your Brightloop subscriptions and invoices</p>
+        </div>
+
+        @if (ViewBag.Error != null)
+        {
+            <div class="alert alert-danger py-2 px-3 small rounded-3 mb-3">
+                <i class="bi bi-exclamation-circle me-1"></i> @ViewBag.Error
+            </div>
+        }
+
+        <form method="post" asp-action="Register">
+            @Html.AntiForgeryToken()
+
+            <div class="mb-3">
+                <label class="form-label small fw-semibold text-muted">Full Name</label>
+                <input type="text" name="fullName" class="form-control" placeholder="e.g. Sarah Connor" required />
+            </div>
+
+            <div class="row g-2 mb-3">
+                <div class="col-6">
+                    <label class="form-label small fw-semibold text-muted">Company Name</label>
+                    <input type="text" name="companyName" class="form-control" placeholder="Acme Ltd" />
+                </div>
+                <div class="col-6">
+                    <label class="form-label small fw-semibold text-muted">Phone</label>
+                    <input type="text" name="phone" class="form-control" placeholder="+1-555-0100" />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label small fw-semibold text-muted">Email Address (Must be unique)</label>
+                <input type="email" name="email" class="form-control" placeholder="name@company.com" required />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label small fw-semibold text-muted">Password</label>
+                <input type="password" id="regPassword" name="password" class="form-control" placeholder="Enter secure password" required oninput="checkPasswordRules(this.value)" />
+                
+                <!-- Live Policy Rules -->
+                <div class="d-flex flex-wrap gap-1 mt-2">
+                    <span id="rule-len" class="rule-badge"><i class="bi bi-circle"></i> &gt; 8 Characters</span>
+                    <span id="rule-upper" class="rule-badge"><i class="bi bi-circle"></i> Uppercase</span>
+                    <span id="rule-lower" class="rule-badge"><i class="bi bi-circle"></i> Lowercase</span>
+                    <span id="rule-special" class="rule-badge"><i class="bi bi-circle"></i> Special Character</span>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label small fw-semibold text-muted">Confirm Password</label>
+                <input type="password" name="confirmPassword" class="form-control" placeholder="Re-type password" required />
+            </div>
+
+            <button type="submit" class="btn btn-brand">Register &amp; Open Portal</button>
+        </form>
+
+        <div class="mt-4 pt-3 border-top text-center">
+            <span class="small text-muted">Already registered? </span>
+            <a href="@Url.Action("Login", "Account")" class="small fw-semibold text-decoration-none" style="color: #4f46e5;">Sign In</a>
+        </div>
+    </div>
+
+    <script>
+        function checkPasswordRules(p) {
+            updateBadge('rule-len', p.length > 8);
+            updateBadge('rule-upper', /[A-Z]/.test(p));
+            updateBadge('rule-lower', /[a-z]/.test(p));
+            updateBadge('rule-special', /[^A-Za-z0-9]/.test(p));
+        }
+
+        function updateBadge(id, valid) {
+            const el = document.getElementById(id);
+            if (valid) {
+                el.className = 'rule-badge valid';
+                el.innerHTML = '<i class="bi bi-check2-circle"></i> ' + el.innerText.trim();
+            } else {
+                el.className = 'rule-badge';
+                el.innerHTML = '<i class="bi bi-circle"></i> ' + el.innerText.trim();
+            }
+        }
+    </script>
+</body>
+</html>
